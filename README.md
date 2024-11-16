@@ -1,6 +1,6 @@
 # MolKAN
 a repository for MolKAN
-- Deep Learning models with Kolmogorov-Arnold networks (KAN) architecture for molecular representation learning and property prediction
+- Deep Learning models with Kolmogorov-Arnold Networks (KAN) architecture for molecular representation learning and property prediction
 
 # Note
 This repository is under construction and will be officially released by [Mizuno group](https://github.com/mizuno-group).  
