@@ -11,14 +11,19 @@ from kan import KAN
 
 
 class KAN_predictor(nn.Module):
-    def __init__(self, width:list, grid=20, k=3):
+    def __init__(self, width:list, mode, grid=20, k=3):
         super().__init__()
         self.width = width
-        self.kan = KAN(width=self.width, grid=grid, k=k, auto_save=False)
-    
-    def forward(self, x):
-        return self.kan.forward(x, singularity_avoiding=False, y_th=1000)
+        self.mode = mode
+        layers = [KAN(width=self.width, grid=grid, k=k, auto_save=False)]
+        if self.mode == "classification":
+            layers.append(nn.Sigmoid())
+        self.kan = nn.ModuleList(layers)
 
+    def forward(self, x):
+        for layer in self.kan:
+            x = layer(x)
+        return x
 
 class MLP_predictor(nn.Module):
     def __init__(self, width:list, mode):
