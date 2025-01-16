@@ -1,0 +1,5 @@
+[20241225-190613] [INFO] |-----Hyperparameters Optimization Start-----|
+[20241225-190613] [INFO] -----n_trial: 100  fold: 5  batch_size: 2048  epochs: 300  patience: 15-----
+[20241225-190613] [INFO] -----Fold-0-----
+[20241225-190704] [DEBUG] epoch 0 | tr loss: 7.28e-01 | tr auroc: 5.04e-01 | val loss: 7.13e-01 | val auroc: 5.25e-01
+[20241225-190756] [DEBUG] epoch 1 | tr loss: 7.12e-01 | tr auroc: 5.11e-01 | val loss: 7.03e-01 | val auroc: 5.29e-01

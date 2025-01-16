@@ -1,0 +1,224 @@
+[20241207-002507] [INFO] |-----Hyperparameters Optimization Start-----|
+[20241207-002507] [INFO] -----n_trial: 100  fold: 5  batch_size: 512  epochs: 150  patience: 15-----
+[20241207-002507] [INFO] -----Fold-0-----
+[20241207-005910] [INFO] |-----Hyperparameters Optimization Start-----|
+[20241207-005910] [INFO] -----n_trial: 100  fold: 5  batch_size: 512  epochs: 150  patience: 15-----
+[20241207-005910] [INFO] -----Fold-0-----
+[20241207-005917] [DEBUG] epoch 0 | tr loss: 7.00e-01 | tr auroc: 4.95e-01 | val loss: 6.84e-01 | val auroc: 5.04e-01
+[20241207-005923] [DEBUG] epoch 1 | tr loss: 6.82e-01 | tr auroc: 5.00e-01 | val loss: 6.79e-01 | val auroc: 5.23e-01
+[20241207-005928] [DEBUG] epoch 2 | tr loss: 6.80e-01 | tr auroc: 5.15e-01 | val loss: 6.77e-01 | val auroc: 5.42e-01
+[20241207-005934] [DEBUG] epoch 3 | tr loss: 6.77e-01 | tr auroc: 5.37e-01 | val loss: 6.77e-01 | val auroc: 5.41e-01
+[20241207-005939] [DEBUG] epoch 4 | tr loss: 6.78e-01 | tr auroc: 5.32e-01 | val loss: 6.78e-01 | val auroc: 5.35e-01
+[20241207-005945] [DEBUG] epoch 5 | tr loss: 6.77e-01 | tr auroc: 5.36e-01 | val loss: 6.78e-01 | val auroc: 5.33e-01
+[20241207-005950] [DEBUG] epoch 6 | tr loss: 6.78e-01 | tr auroc: 5.33e-01 | val loss: 6.78e-01 | val auroc: 5.30e-01
+[20241207-005956] [DEBUG] epoch 7 | tr loss: 6.77e-01 | tr auroc: 5.29e-01 | val loss: 6.78e-01 | val auroc: 5.25e-01
+[20241207-010001] [DEBUG] epoch 8 | tr loss: 6.78e-01 | tr auroc: 5.30e-01 | val loss: 6.78e-01 | val auroc: 5.23e-01
+[20241207-010007] [DEBUG] epoch 9 | tr loss: 6.77e-01 | tr auroc: 5.30e-01 | val loss: 6.79e-01 | val auroc: 5.20e-01
+[20241207-010012] [DEBUG] epoch 10 | tr loss: 6.78e-01 | tr auroc: 5.29e-01 | val loss: 6.79e-01 | val auroc: 5.13e-01
+[20241207-010018] [DEBUG] epoch 11 | tr loss: 6.78e-01 | tr auroc: 5.26e-01 | val loss: 6.79e-01 | val auroc: 5.11e-01
+[20241207-010023] [DEBUG] epoch 12 | tr loss: 6.78e-01 | tr auroc: 5.29e-01 | val loss: 6.79e-01 | val auroc: 5.09e-01
+[20241207-010029] [DEBUG] epoch 13 | tr loss: 6.78e-01 | tr auroc: 5.26e-01 | val loss: 6.79e-01 | val auroc: 5.09e-01
+[20241207-010034] [DEBUG] epoch 14 | tr loss: 6.77e-01 | tr auroc: 5.24e-01 | val loss: 6.79e-01 | val auroc: 5.08e-01
+[20241207-010040] [DEBUG] epoch 15 | tr loss: 6.78e-01 | tr auroc: 5.24e-01 | val loss: 6.79e-01 | val auroc: 5.05e-01
+[20241207-010045] [DEBUG] epoch 16 | tr loss: 6.78e-01 | tr auroc: 5.23e-01 | val loss: 6.79e-01 | val auroc: 5.08e-01
+[20241207-010051] [DEBUG] epoch 17 | tr loss: 6.78e-01 | tr auroc: 5.25e-01 | val loss: 6.79e-01 | val auroc: 5.04e-01
+[20241207-010051] [INFO] EarlyStopping at epoch 17
+[20241207-010051] [INFO] -----Fold-1-----
+[20241207-010057] [DEBUG] epoch 0 | tr loss: 7.00e-01 | tr auroc: 4.93e-01 | val loss: 6.84e-01 | val auroc: 5.03e-01
+[20241207-010102] [DEBUG] epoch 1 | tr loss: 6.81e-01 | tr auroc: 5.06e-01 | val loss: 6.81e-01 | val auroc: 5.10e-01
+[20241207-010108] [DEBUG] epoch 2 | tr loss: 6.79e-01 | tr auroc: 5.25e-01 | val loss: 6.78e-01 | val auroc: 5.30e-01
+[20241207-010113] [DEBUG] epoch 3 | tr loss: 6.77e-01 | tr auroc: 5.42e-01 | val loss: 6.79e-01 | val auroc: 5.21e-01
+[20241207-010119] [DEBUG] epoch 4 | tr loss: 6.77e-01 | tr auroc: 5.35e-01 | val loss: 6.79e-01 | val auroc: 5.11e-01
+[20241207-010124] [DEBUG] epoch 5 | tr loss: 6.78e-01 | tr auroc: 5.35e-01 | val loss: 6.79e-01 | val auroc: 5.08e-01
+[20241207-010130] [DEBUG] epoch 6 | tr loss: 6.77e-01 | tr auroc: 5.35e-01 | val loss: 6.79e-01 | val auroc: 5.05e-01
+[20241207-010135] [DEBUG] epoch 7 | tr loss: 6.78e-01 | tr auroc: 5.33e-01 | val loss: 6.79e-01 | val auroc: 5.09e-01
+[20241207-010141] [DEBUG] epoch 8 | tr loss: 6.79e-01 | tr auroc: 5.37e-01 | val loss: 6.79e-01 | val auroc: 5.07e-01
+[20241207-010147] [DEBUG] epoch 9 | tr loss: 6.79e-01 | tr auroc: 5.30e-01 | val loss: 6.79e-01 | val auroc: 5.05e-01
+[20241207-010152] [DEBUG] epoch 10 | tr loss: 6.78e-01 | tr auroc: 5.32e-01 | val loss: 6.79e-01 | val auroc: 5.06e-01
+[20241207-010158] [DEBUG] epoch 11 | tr loss: 6.79e-01 | tr auroc: 5.24e-01 | val loss: 6.79e-01 | val auroc: 5.06e-01
+[20241207-010203] [DEBUG] epoch 12 | tr loss: 6.78e-01 | tr auroc: 5.24e-01 | val loss: 6.79e-01 | val auroc: 5.12e-01
+[20241207-010209] [DEBUG] epoch 13 | tr loss: 6.78e-01 | tr auroc: 5.27e-01 | val loss: 6.79e-01 | val auroc: 5.10e-01
+[20241207-010214] [DEBUG] epoch 14 | tr loss: 6.79e-01 | tr auroc: 5.18e-01 | val loss: 6.79e-01 | val auroc: 5.13e-01
+[20241207-010219] [DEBUG] epoch 15 | tr loss: 6.78e-01 | tr auroc: 5.23e-01 | val loss: 6.79e-01 | val auroc: 5.07e-01
+[20241207-010225] [DEBUG] epoch 16 | tr loss: 6.78e-01 | tr auroc: 5.18e-01 | val loss: 6.79e-01 | val auroc: 5.16e-01
+[20241207-010230] [DEBUG] epoch 17 | tr loss: 6.78e-01 | tr auroc: 5.22e-01 | val loss: 6.79e-01 | val auroc: 5.16e-01
+[20241207-010230] [INFO] EarlyStopping at epoch 17
+[20241207-010230] [INFO] -----Fold-2-----
+[20241207-010236] [DEBUG] epoch 0 | tr loss: 7.00e-01 | tr auroc: 4.94e-01 | val loss: 6.84e-01 | val auroc: 5.06e-01
+[20241207-010242] [DEBUG] epoch 1 | tr loss: 6.82e-01 | tr auroc: 5.04e-01 | val loss: 6.80e-01 | val auroc: 5.17e-01
+[20241207-010248] [DEBUG] epoch 2 | tr loss: 6.79e-01 | tr auroc: 5.21e-01 | val loss: 6.77e-01 | val auroc: 5.35e-01
+[20241207-010253] [DEBUG] epoch 3 | tr loss: 6.77e-01 | tr auroc: 5.37e-01 | val loss: 6.77e-01 | val auroc: 5.35e-01
+[20241207-010259] [DEBUG] epoch 4 | tr loss: 6.77e-01 | tr auroc: 5.33e-01 | val loss: 6.77e-01 | val auroc: 5.35e-01
+[20241207-010304] [DEBUG] epoch 5 | tr loss: 6.77e-01 | tr auroc: 5.34e-01 | val loss: 6.77e-01 | val auroc: 5.42e-01
+[20241207-010310] [DEBUG] epoch 6 | tr loss: 6.78e-01 | tr auroc: 5.29e-01 | val loss: 6.77e-01 | val auroc: 5.42e-01
+[20241207-010315] [DEBUG] epoch 7 | tr loss: 6.78e-01 | tr auroc: 5.28e-01 | val loss: 6.77e-01 | val auroc: 5.38e-01
+[20241207-010321] [DEBUG] epoch 8 | tr loss: 6.79e-01 | tr auroc: 5.24e-01 | val loss: 6.77e-01 | val auroc: 5.38e-01
+[20241207-010326] [DEBUG] epoch 9 | tr loss: 6.77e-01 | tr auroc: 5.26e-01 | val loss: 6.77e-01 | val auroc: 5.35e-01
+[20241207-010332] [DEBUG] epoch 10 | tr loss: 6.79e-01 | tr auroc: 5.19e-01 | val loss: 6.77e-01 | val auroc: 5.34e-01
+[20241207-010337] [DEBUG] epoch 11 | tr loss: 6.79e-01 | tr auroc: 5.19e-01 | val loss: 6.77e-01 | val auroc: 5.33e-01
+[20241207-010343] [DEBUG] epoch 12 | tr loss: 6.79e-01 | tr auroc: 5.17e-01 | val loss: 6.77e-01 | val auroc: 5.37e-01
+[20241207-010348] [DEBUG] epoch 13 | tr loss: 6.79e-01 | tr auroc: 5.14e-01 | val loss: 6.77e-01 | val auroc: 5.34e-01
+[20241207-010354] [DEBUG] epoch 14 | tr loss: 6.79e-01 | tr auroc: 5.12e-01 | val loss: 6.77e-01 | val auroc: 5.35e-01
+[20241207-010359] [DEBUG] epoch 15 | tr loss: 6.79e-01 | tr auroc: 5.19e-01 | val loss: 6.77e-01 | val auroc: 5.36e-01
+[20241207-010405] [DEBUG] epoch 16 | tr loss: 6.79e-01 | tr auroc: 5.12e-01 | val loss: 6.78e-01 | val auroc: 5.34e-01
+[20241207-010410] [DEBUG] epoch 17 | tr loss: 6.79e-01 | tr auroc: 5.14e-01 | val loss: 6.78e-01 | val auroc: 5.27e-01
+[20241207-010410] [INFO] EarlyStopping at epoch 17
+[20241207-010410] [INFO] -----Fold-3-----
+[20241207-010416] [DEBUG] epoch 0 | tr loss: 7.00e-01 | tr auroc: 4.98e-01 | val loss: 6.87e-01 | val auroc: 4.86e-01
+[20241207-010422] [DEBUG] epoch 1 | tr loss: 6.82e-01 | tr auroc: 5.09e-01 | val loss: 6.82e-01 | val auroc: 4.95e-01
+[20241207-010428] [DEBUG] epoch 2 | tr loss: 6.78e-01 | tr auroc: 5.25e-01 | val loss: 6.79e-01 | val auroc: 5.20e-01
+[20241207-010433] [DEBUG] epoch 3 | tr loss: 6.77e-01 | tr auroc: 5.35e-01 | val loss: 6.79e-01 | val auroc: 5.24e-01
+[20241207-010439] [DEBUG] epoch 4 | tr loss: 6.78e-01 | tr auroc: 5.32e-01 | val loss: 6.79e-01 | val auroc: 5.26e-01
+[20241207-010444] [DEBUG] epoch 5 | tr loss: 6.77e-01 | tr auroc: 5.30e-01 | val loss: 6.78e-01 | val auroc: 5.34e-01
+[20241207-010450] [DEBUG] epoch 6 | tr loss: 6.78e-01 | tr auroc: 5.30e-01 | val loss: 6.79e-01 | val auroc: 5.30e-01
+[20241207-010455] [DEBUG] epoch 7 | tr loss: 6.78e-01 | tr auroc: 5.27e-01 | val loss: 6.79e-01 | val auroc: 5.32e-01
+[20241207-010501] [DEBUG] epoch 8 | tr loss: 6.78e-01 | tr auroc: 5.28e-01 | val loss: 6.79e-01 | val auroc: 5.26e-01
+[20241207-010506] [DEBUG] epoch 9 | tr loss: 6.78e-01 | tr auroc: 5.23e-01 | val loss: 6.79e-01 | val auroc: 5.28e-01
+[20241207-010512] [DEBUG] epoch 10 | tr loss: 6.78e-01 | tr auroc: 5.22e-01 | val loss: 6.79e-01 | val auroc: 5.26e-01
+[20241207-010517] [DEBUG] epoch 11 | tr loss: 6.78e-01 | tr auroc: 5.19e-01 | val loss: 6.79e-01 | val auroc: 5.25e-01
+[20241207-010523] [DEBUG] epoch 12 | tr loss: 6.78e-01 | tr auroc: 5.19e-01 | val loss: 6.79e-01 | val auroc: 5.26e-01
+[20241207-010528] [DEBUG] epoch 13 | tr loss: 6.79e-01 | tr auroc: 5.24e-01 | val loss: 6.79e-01 | val auroc: 5.22e-01
+[20241207-010534] [DEBUG] epoch 14 | tr loss: 6.79e-01 | tr auroc: 5.16e-01 | val loss: 6.79e-01 | val auroc: 5.23e-01
+[20241207-010540] [DEBUG] epoch 15 | tr loss: 6.78e-01 | tr auroc: 5.17e-01 | val loss: 6.79e-01 | val auroc: 5.22e-01
+[20241207-010545] [DEBUG] epoch 16 | tr loss: 6.78e-01 | tr auroc: 5.19e-01 | val loss: 6.79e-01 | val auroc: 5.25e-01
+[20241207-010551] [DEBUG] epoch 17 | tr loss: 6.78e-01 | tr auroc: 5.17e-01 | val loss: 6.79e-01 | val auroc: 5.21e-01
+[20241207-010551] [INFO] EarlyStopping at epoch 17
+[20241207-010551] [INFO] -----Fold-4-----
+[20241207-010557] [DEBUG] epoch 0 | tr loss: 7.00e-01 | tr auroc: 4.93e-01 | val loss: 6.85e-01 | val auroc: 4.96e-01
+[20241207-010602] [DEBUG] epoch 1 | tr loss: 6.83e-01 | tr auroc: 5.05e-01 | val loss: 6.81e-01 | val auroc: 5.02e-01
+[20241207-010608] [DEBUG] epoch 2 | tr loss: 6.78e-01 | tr auroc: 5.21e-01 | val loss: 6.77e-01 | val auroc: 5.30e-01
+[20241207-010613] [DEBUG] epoch 3 | tr loss: 6.77e-01 | tr auroc: 5.35e-01 | val loss: 6.77e-01 | val auroc: 5.37e-01
+[20241207-010619] [DEBUG] epoch 4 | tr loss: 6.78e-01 | tr auroc: 5.28e-01 | val loss: 6.77e-01 | val auroc: 5.34e-01
+[20241207-010624] [DEBUG] epoch 5 | tr loss: 6.79e-01 | tr auroc: 5.27e-01 | val loss: 6.77e-01 | val auroc: 5.32e-01
+[20241207-010630] [DEBUG] epoch 6 | tr loss: 6.77e-01 | tr auroc: 5.32e-01 | val loss: 6.78e-01 | val auroc: 5.31e-01
+[20241207-010636] [DEBUG] epoch 7 | tr loss: 6.78e-01 | tr auroc: 5.26e-01 | val loss: 6.78e-01 | val auroc: 5.31e-01
+[20241207-010641] [DEBUG] epoch 8 | tr loss: 6.78e-01 | tr auroc: 5.26e-01 | val loss: 6.78e-01 | val auroc: 5.26e-01
+[20241207-010647] [DEBUG] epoch 9 | tr loss: 6.78e-01 | tr auroc: 5.25e-01 | val loss: 6.78e-01 | val auroc: 5.27e-01
+[20241207-010652] [DEBUG] epoch 10 | tr loss: 6.78e-01 | tr auroc: 5.24e-01 | val loss: 6.78e-01 | val auroc: 5.25e-01
+[20241207-010658] [DEBUG] epoch 11 | tr loss: 6.78e-01 | tr auroc: 5.23e-01 | val loss: 6.78e-01 | val auroc: 5.23e-01
+[20241207-010703] [DEBUG] epoch 12 | tr loss: 6.78e-01 | tr auroc: 5.21e-01 | val loss: 6.78e-01 | val auroc: 5.23e-01
+[20241207-010709] [DEBUG] epoch 13 | tr loss: 6.78e-01 | tr auroc: 5.21e-01 | val loss: 6.78e-01 | val auroc: 5.22e-01
+[20241207-010714] [DEBUG] epoch 14 | tr loss: 6.79e-01 | tr auroc: 5.21e-01 | val loss: 6.79e-01 | val auroc: 5.18e-01
+[20241207-010719] [DEBUG] epoch 15 | tr loss: 6.78e-01 | tr auroc: 5.21e-01 | val loss: 6.79e-01 | val auroc: 5.19e-01
+[20241207-010725] [DEBUG] epoch 16 | tr loss: 6.79e-01 | tr auroc: 5.17e-01 | val loss: 6.79e-01 | val auroc: 5.19e-01
+[20241207-010730] [DEBUG] epoch 17 | tr loss: 6.78e-01 | tr auroc: 5.20e-01 | val loss: 6.79e-01 | val auroc: 5.19e-01
+[20241207-010730] [INFO] EarlyStopping at epoch 17
+[20241207-010730] [INFO] -----5Fold finished. Value: 6.78e-01 +- 8.2e-04-----
+[20241207-010730] [INFO] -----Fold-0-----
+[20241207-010736] [DEBUG] epoch 0 | tr loss: 1.47e+00 | tr auroc: 7.67e-01 | val loss: 6.53e-01 | val auroc: 8.35e-01
+[20241207-010742] [DEBUG] epoch 1 | tr loss: 5.70e-01 | tr auroc: 8.48e-01 | val loss: 5.59e-01 | val auroc: 8.42e-01
+[20241207-010748] [DEBUG] epoch 2 | tr loss: 4.93e-01 | tr auroc: 8.57e-01 | val loss: 4.86e-01 | val auroc: 8.44e-01
+[20241207-010753] [DEBUG] epoch 3 | tr loss: 4.67e-01 | tr auroc: 8.62e-01 | val loss: 4.78e-01 | val auroc: 8.47e-01
+[20241207-010759] [DEBUG] epoch 4 | tr loss: 4.61e-01 | tr auroc: 8.64e-01 | val loss: 4.76e-01 | val auroc: 8.48e-01
+[20241207-010804] [DEBUG] epoch 5 | tr loss: 4.55e-01 | tr auroc: 8.67e-01 | val loss: 4.84e-01 | val auroc: 8.50e-01
+[20241207-010810] [DEBUG] epoch 6 | tr loss: 4.57e-01 | tr auroc: 8.70e-01 | val loss: 4.73e-01 | val auroc: 8.51e-01
+[20241207-010816] [DEBUG] epoch 7 | tr loss: 4.48e-01 | tr auroc: 8.73e-01 | val loss: 4.71e-01 | val auroc: 8.52e-01
+[20241207-010821] [DEBUG] epoch 8 | tr loss: 4.44e-01 | tr auroc: 8.76e-01 | val loss: 4.78e-01 | val auroc: 8.54e-01
+[20241207-010827] [DEBUG] epoch 9 | tr loss: 4.46e-01 | tr auroc: 8.76e-01 | val loss: 4.67e-01 | val auroc: 8.54e-01
+[20241207-010832] [DEBUG] epoch 10 | tr loss: 4.41e-01 | tr auroc: 8.78e-01 | val loss: 4.69e-01 | val auroc: 8.54e-01
+[20241207-010838] [DEBUG] epoch 11 | tr loss: 4.41e-01 | tr auroc: 8.78e-01 | val loss: 4.69e-01 | val auroc: 8.54e-01
+[20241207-010843] [DEBUG] epoch 12 | tr loss: 4.36e-01 | tr auroc: 8.81e-01 | val loss: 4.68e-01 | val auroc: 8.54e-01
+[20241207-010849] [DEBUG] epoch 13 | tr loss: 4.42e-01 | tr auroc: 8.82e-01 | val loss: 4.74e-01 | val auroc: 8.55e-01
+[20241207-010854] [DEBUG] epoch 14 | tr loss: 4.37e-01 | tr auroc: 8.82e-01 | val loss: 4.73e-01 | val auroc: 8.53e-01
+[20241207-010900] [DEBUG] epoch 15 | tr loss: 4.46e-01 | tr auroc: 8.82e-01 | val loss: 4.82e-01 | val auroc: 8.53e-01
+[20241207-010905] [DEBUG] epoch 16 | tr loss: 4.42e-01 | tr auroc: 8.81e-01 | val loss: 4.78e-01 | val auroc: 8.54e-01
+[20241207-010911] [DEBUG] epoch 17 | tr loss: 4.32e-01 | tr auroc: 8.84e-01 | val loss: 4.68e-01 | val auroc: 8.53e-01
+[20241207-010916] [DEBUG] epoch 18 | tr loss: 4.33e-01 | tr auroc: 8.85e-01 | val loss: 4.79e-01 | val auroc: 8.53e-01
+[20241207-010922] [DEBUG] epoch 19 | tr loss: 4.36e-01 | tr auroc: 8.86e-01 | val loss: 4.69e-01 | val auroc: 8.53e-01
+[20241207-010927] [DEBUG] epoch 20 | tr loss: 4.32e-01 | tr auroc: 8.85e-01 | val loss: 4.70e-01 | val auroc: 8.53e-01
+[20241207-010933] [DEBUG] epoch 21 | tr loss: 4.32e-01 | tr auroc: 8.84e-01 | val loss: 4.82e-01 | val auroc: 8.53e-01
+[20241207-010938] [DEBUG] epoch 22 | tr loss: 4.32e-01 | tr auroc: 8.85e-01 | val loss: 4.70e-01 | val auroc: 8.54e-01
+[20241207-010944] [DEBUG] epoch 23 | tr loss: 4.36e-01 | tr auroc: 8.85e-01 | val loss: 4.84e-01 | val auroc: 8.52e-01
+[20241207-010949] [DEBUG] epoch 24 | tr loss: 4.36e-01 | tr auroc: 8.83e-01 | val loss: 4.80e-01 | val auroc: 8.51e-01
+[20241207-010949] [INFO] EarlyStopping at epoch 24
+[20241207-010949] [INFO] -----Fold-1-----
+[20241207-010955] [DEBUG] epoch 0 | tr loss: 1.69e+00 | tr auroc: 7.80e-01 | val loss: 1.04e+00 | val auroc: 8.17e-01
+[20241207-011001] [DEBUG] epoch 1 | tr loss: 6.38e-01 | tr auroc: 8.44e-01 | val loss: 5.32e-01 | val auroc: 8.36e-01
+[20241207-011006] [DEBUG] epoch 2 | tr loss: 4.99e-01 | tr auroc: 8.56e-01 | val loss: 4.89e-01 | val auroc: 8.43e-01
+[20241207-011012] [DEBUG] epoch 3 | tr loss: 4.74e-01 | tr auroc: 8.60e-01 | val loss: 4.84e-01 | val auroc: 8.45e-01
+[20241207-011017] [DEBUG] epoch 4 | tr loss: 4.63e-01 | tr auroc: 8.62e-01 | val loss: 4.81e-01 | val auroc: 8.45e-01
+[20241207-011023] [DEBUG] epoch 5 | tr loss: 4.62e-01 | tr auroc: 8.66e-01 | val loss: 4.85e-01 | val auroc: 8.44e-01
+[20241207-011028] [DEBUG] epoch 6 | tr loss: 4.62e-01 | tr auroc: 8.69e-01 | val loss: 4.87e-01 | val auroc: 8.46e-01
+[20241207-011034] [DEBUG] epoch 7 | tr loss: 4.55e-01 | tr auroc: 8.70e-01 | val loss: 4.87e-01 | val auroc: 8.46e-01
+[20241207-011039] [DEBUG] epoch 8 | tr loss: 4.54e-01 | tr auroc: 8.72e-01 | val loss: 4.87e-01 | val auroc: 8.46e-01
+[20241207-011045] [DEBUG] epoch 9 | tr loss: 4.48e-01 | tr auroc: 8.74e-01 | val loss: 4.79e-01 | val auroc: 8.47e-01
+[20241207-011051] [DEBUG] epoch 10 | tr loss: 4.51e-01 | tr auroc: 8.74e-01 | val loss: 4.87e-01 | val auroc: 8.47e-01
+[20241207-011056] [DEBUG] epoch 11 | tr loss: 4.45e-01 | tr auroc: 8.77e-01 | val loss: 4.78e-01 | val auroc: 8.47e-01
+[20241207-011102] [DEBUG] epoch 12 | tr loss: 4.42e-01 | tr auroc: 8.80e-01 | val loss: 4.80e-01 | val auroc: 8.47e-01
+[20241207-011107] [DEBUG] epoch 13 | tr loss: 4.41e-01 | tr auroc: 8.77e-01 | val loss: 4.75e-01 | val auroc: 8.47e-01
+[20241207-011113] [DEBUG] epoch 14 | tr loss: 4.36e-01 | tr auroc: 8.81e-01 | val loss: 4.73e-01 | val auroc: 8.48e-01
+[20241207-011118] [DEBUG] epoch 15 | tr loss: 4.33e-01 | tr auroc: 8.81e-01 | val loss: 4.74e-01 | val auroc: 8.47e-01
+[20241207-011124] [DEBUG] epoch 16 | tr loss: 4.35e-01 | tr auroc: 8.81e-01 | val loss: 4.73e-01 | val auroc: 8.48e-01
+[20241207-011130] [DEBUG] epoch 17 | tr loss: 4.36e-01 | tr auroc: 8.82e-01 | val loss: 4.83e-01 | val auroc: 8.47e-01
+[20241207-011135] [DEBUG] epoch 18 | tr loss: 4.46e-01 | tr auroc: 8.83e-01 | val loss: 4.80e-01 | val auroc: 8.47e-01
+[20241207-011141] [DEBUG] epoch 19 | tr loss: 4.32e-01 | tr auroc: 8.84e-01 | val loss: 4.73e-01 | val auroc: 8.49e-01
+[20241207-011146] [DEBUG] epoch 20 | tr loss: 4.35e-01 | tr auroc: 8.85e-01 | val loss: 4.82e-01 | val auroc: 8.48e-01
+[20241207-011152] [DEBUG] epoch 21 | tr loss: 4.34e-01 | tr auroc: 8.83e-01 | val loss: 4.75e-01 | val auroc: 8.47e-01
+[20241207-011158] [DEBUG] epoch 22 | tr loss: 4.32e-01 | tr auroc: 8.83e-01 | val loss: 4.76e-01 | val auroc: 8.49e-01
+[20241207-011203] [DEBUG] epoch 23 | tr loss: 4.29e-01 | tr auroc: 8.85e-01 | val loss: 4.72e-01 | val auroc: 8.49e-01
+[20241207-011209] [DEBUG] epoch 24 | tr loss: 4.29e-01 | tr auroc: 8.85e-01 | val loss: 4.73e-01 | val auroc: 8.48e-01
+[20241207-011214] [DEBUG] epoch 25 | tr loss: 4.31e-01 | tr auroc: 8.85e-01 | val loss: 4.76e-01 | val auroc: 8.48e-01
+[20241207-011220] [DEBUG] epoch 26 | tr loss: 4.30e-01 | tr auroc: 8.85e-01 | val loss: 4.73e-01 | val auroc: 8.48e-01
+[20241207-011225] [DEBUG] epoch 27 | tr loss: 4.27e-01 | tr auroc: 8.85e-01 | val loss: 4.72e-01 | val auroc: 8.49e-01
+[20241207-011231] [DEBUG] epoch 28 | tr loss: 4.27e-01 | tr auroc: 8.85e-01 | val loss: 4.73e-01 | val auroc: 8.48e-01
+[20241207-011236] [DEBUG] epoch 29 | tr loss: 4.30e-01 | tr auroc: 8.86e-01 | val loss: 4.74e-01 | val auroc: 8.50e-01
+[20241207-011242] [DEBUG] epoch 30 | tr loss: 4.27e-01 | tr auroc: 8.86e-01 | val loss: 4.73e-01 | val auroc: 8.48e-01
+[20241207-011247] [DEBUG] epoch 31 | tr loss: 4.25e-01 | tr auroc: 8.89e-01 | val loss: 4.75e-01 | val auroc: 8.46e-01
+[20241207-011253] [DEBUG] epoch 32 | tr loss: 4.27e-01 | tr auroc: 8.86e-01 | val loss: 4.72e-01 | val auroc: 8.49e-01
+[20241207-011258] [DEBUG] epoch 33 | tr loss: 4.26e-01 | tr auroc: 8.88e-01 | val loss: 4.77e-01 | val auroc: 8.48e-01
+[20241207-011304] [DEBUG] epoch 34 | tr loss: 4.26e-01 | tr auroc: 8.87e-01 | val loss: 4.76e-01 | val auroc: 8.48e-01
+[20241207-011309] [DEBUG] epoch 35 | tr loss: 4.23e-01 | tr auroc: 8.89e-01 | val loss: 4.75e-01 | val auroc: 8.47e-01
+[20241207-011315] [DEBUG] epoch 36 | tr loss: 4.27e-01 | tr auroc: 8.87e-01 | val loss: 4.72e-01 | val auroc: 8.49e-01
+[20241207-011320] [DEBUG] epoch 37 | tr loss: 4.29e-01 | tr auroc: 8.85e-01 | val loss: 4.74e-01 | val auroc: 8.48e-01
+[20241207-011326] [DEBUG] epoch 38 | tr loss: 4.30e-01 | tr auroc: 8.88e-01 | val loss: 4.77e-01 | val auroc: 8.46e-01
+[20241207-011326] [INFO] EarlyStopping at epoch 38
+[20241207-011326] [INFO] -----Fold-2-----
+[20241207-011332] [DEBUG] epoch 0 | tr loss: 1.60e+00 | tr auroc: 7.75e-01 | val loss: 9.41e-01 | val auroc: 8.19e-01
+[20241207-011337] [DEBUG] epoch 1 | tr loss: 5.73e-01 | tr auroc: 8.49e-01 | val loss: 5.30e-01 | val auroc: 8.31e-01
+[20241207-011342] [DEBUG] epoch 2 | tr loss: 4.91e-01 | tr auroc: 8.57e-01 | val loss: 5.04e-01 | val auroc: 8.36e-01
+[20241207-011348] [DEBUG] epoch 3 | tr loss: 4.67e-01 | tr auroc: 8.60e-01 | val loss: 4.92e-01 | val auroc: 8.37e-01
+[20241207-011353] [DEBUG] epoch 4 | tr loss: 4.61e-01 | tr auroc: 8.63e-01 | val loss: 4.97e-01 | val auroc: 8.41e-01
+[20241207-011359] [DEBUG] epoch 5 | tr loss: 4.55e-01 | tr auroc: 8.67e-01 | val loss: 4.86e-01 | val auroc: 8.42e-01
+[20241207-011404] [DEBUG] epoch 6 | tr loss: 4.50e-01 | tr auroc: 8.70e-01 | val loss: 4.85e-01 | val auroc: 8.44e-01
+[20241207-011410] [DEBUG] epoch 7 | tr loss: 4.52e-01 | tr auroc: 8.73e-01 | val loss: 4.91e-01 | val auroc: 8.45e-01
+[20241207-011415] [DEBUG] epoch 8 | tr loss: 4.52e-01 | tr auroc: 8.75e-01 | val loss: 4.82e-01 | val auroc: 8.45e-01
+[20241207-011421] [DEBUG] epoch 9 | tr loss: 4.46e-01 | tr auroc: 8.79e-01 | val loss: 4.88e-01 | val auroc: 8.46e-01
+[20241207-011427] [DEBUG] epoch 10 | tr loss: 4.43e-01 | tr auroc: 8.78e-01 | val loss: 4.91e-01 | val auroc: 8.46e-01
+[20241207-011432] [DEBUG] epoch 11 | tr loss: 4.42e-01 | tr auroc: 8.80e-01 | val loss: 4.80e-01 | val auroc: 8.44e-01
+[20241207-011438] [DEBUG] epoch 12 | tr loss: 4.38e-01 | tr auroc: 8.81e-01 | val loss: 4.79e-01 | val auroc: 8.47e-01
+[20241207-011443] [DEBUG] epoch 13 | tr loss: 4.36e-01 | tr auroc: 8.81e-01 | val loss: 4.87e-01 | val auroc: 8.45e-01
+[20241207-011449] [DEBUG] epoch 14 | tr loss: 4.45e-01 | tr auroc: 8.81e-01 | val loss: 4.78e-01 | val auroc: 8.46e-01
+[20241207-011454] [DEBUG] epoch 15 | tr loss: 4.33e-01 | tr auroc: 8.83e-01 | val loss: 4.78e-01 | val auroc: 8.46e-01
+[20241207-011500] [DEBUG] epoch 16 | tr loss: 4.33e-01 | tr auroc: 8.80e-01 | val loss: 4.79e-01 | val auroc: 8.47e-01
+[20241207-011505] [DEBUG] epoch 17 | tr loss: 4.30e-01 | tr auroc: 8.85e-01 | val loss: 4.78e-01 | val auroc: 8.47e-01
+[20241207-011511] [DEBUG] epoch 18 | tr loss: 4.31e-01 | tr auroc: 8.83e-01 | val loss: 4.82e-01 | val auroc: 8.47e-01
+[20241207-011516] [DEBUG] epoch 19 | tr loss: 4.33e-01 | tr auroc: 8.83e-01 | val loss: 4.79e-01 | val auroc: 8.47e-01
+[20241207-011522] [DEBUG] epoch 20 | tr loss: 4.37e-01 | tr auroc: 8.85e-01 | val loss: 4.77e-01 | val auroc: 8.47e-01
+[20241207-011527] [DEBUG] epoch 21 | tr loss: 4.37e-01 | tr auroc: 8.83e-01 | val loss: 5.00e-01 | val auroc: 8.47e-01
+[20241207-011533] [DEBUG] epoch 22 | tr loss: 4.30e-01 | tr auroc: 8.86e-01 | val loss: 4.78e-01 | val auroc: 8.47e-01
+[20241207-011538] [DEBUG] epoch 23 | tr loss: 4.30e-01 | tr auroc: 8.86e-01 | val loss: 4.78e-01 | val auroc: 8.47e-01
+[20241207-011544] [DEBUG] epoch 24 | tr loss: 4.28e-01 | tr auroc: 8.88e-01 | val loss: 4.80e-01 | val auroc: 8.44e-01
+[20241207-011549] [DEBUG] epoch 25 | tr loss: 4.26e-01 | tr auroc: 8.86e-01 | val loss: 4.81e-01 | val auroc: 8.47e-01
+[20241207-011554] [DEBUG] epoch 26 | tr loss: 4.27e-01 | tr auroc: 8.87e-01 | val loss: 4.77e-01 | val auroc: 8.47e-01
+[20241207-011600] [DEBUG] epoch 27 | tr loss: 4.28e-01 | tr auroc: 8.88e-01 | val loss: 4.84e-01 | val auroc: 8.45e-01
+[20241207-011605] [DEBUG] epoch 28 | tr loss: 4.42e-01 | tr auroc: 8.85e-01 | val loss: 4.97e-01 | val auroc: 8.45e-01
+[20241207-011611] [DEBUG] epoch 29 | tr loss: 4.30e-01 | tr auroc: 8.87e-01 | val loss: 4.83e-01 | val auroc: 8.45e-01
+[20241207-011616] [DEBUG] epoch 30 | tr loss: 4.26e-01 | tr auroc: 8.87e-01 | val loss: 4.76e-01 | val auroc: 8.47e-01
+[20241207-011622] [DEBUG] epoch 31 | tr loss: 4.25e-01 | tr auroc: 8.87e-01 | val loss: 4.82e-01 | val auroc: 8.44e-01
+[20241207-011627] [DEBUG] epoch 32 | tr loss: 4.26e-01 | tr auroc: 8.88e-01 | val loss: 5.12e-01 | val auroc: 8.47e-01
+[20241207-011633] [DEBUG] epoch 33 | tr loss: 4.30e-01 | tr auroc: 8.88e-01 | val loss: 4.76e-01 | val auroc: 8.47e-01
+[20241207-011639] [DEBUG] epoch 34 | tr loss: 4.22e-01 | tr auroc: 8.90e-01 | val loss: 4.79e-01 | val auroc: 8.46e-01
+[20241207-011644] [DEBUG] epoch 35 | tr loss: 4.27e-01 | tr auroc: 8.86e-01 | val loss: 4.79e-01 | val auroc: 8.45e-01
+[20241207-011650] [DEBUG] epoch 36 | tr loss: 4.25e-01 | tr auroc: 8.88e-01 | val loss: 4.86e-01 | val auroc: 8.45e-01
+[20241207-011655] [DEBUG] epoch 37 | tr loss: 4.28e-01 | tr auroc: 8.88e-01 | val loss: 4.81e-01 | val auroc: 8.45e-01
+[20241207-011701] [DEBUG] epoch 38 | tr loss: 4.21e-01 | tr auroc: 8.89e-01 | val loss: 4.84e-01 | val auroc: 8.45e-01
+[20241207-011706] [DEBUG] epoch 39 | tr loss: 4.22e-01 | tr auroc: 8.89e-01 | val loss: 4.79e-01 | val auroc: 8.45e-01
+[20241207-011712] [DEBUG] epoch 40 | tr loss: 4.24e-01 | tr auroc: 8.87e-01 | val loss: 4.86e-01 | val auroc: 8.45e-01
+[20241207-011718] [DEBUG] epoch 41 | tr loss: 4.22e-01 | tr auroc: 8.91e-01 | val loss: 4.79e-01 | val auroc: 8.47e-01
+[20241207-011723] [DEBUG] epoch 42 | tr loss: 4.22e-01 | tr auroc: 8.90e-01 | val loss: 4.83e-01 | val auroc: 8.46e-01
+[20241207-011729] [DEBUG] epoch 43 | tr loss: 4.24e-01 | tr auroc: 8.90e-01 | val loss: 4.78e-01 | val auroc: 8.46e-01
+[20241207-011734] [DEBUG] epoch 44 | tr loss: 4.24e-01 | tr auroc: 8.88e-01 | val loss: 4.88e-01 | val auroc: 8.45e-01
+[20241207-011740] [DEBUG] epoch 45 | tr loss: 4.24e-01 | tr auroc: 8.90e-01 | val loss: 4.79e-01 | val auroc: 8.47e-01
+[20241207-011740] [INFO] EarlyStopping at epoch 45
+[20241207-011740] [INFO] -----Fold-3-----
+[20241207-011746] [DEBUG] epoch 0 | tr loss: 1.61e+00 | tr auroc: 7.69e-01 | val loss: 9.66e-01 | val auroc: 8.38e-01
