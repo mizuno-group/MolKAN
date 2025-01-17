@@ -8,8 +8,7 @@ import numpy as np
 import pandas as pd
 import torch
 from tqdm import tqdm
-from torch.optim import Adam, AdamW, LBFGS
-from utils import save_checkpoint
+from utils import save_checkpoint, Metrics
 
 
 class Trainer:
@@ -22,12 +21,12 @@ class Trainer:
         self.device = device
         self.logger = logger
         self.scheduler = scheduler
-    
+        
 
     def train(self, trainloader, validloader, num_epochs, earlystopping_patience=10, save_model_every_n_epochs=0):
         train_losses, valid_losses, valid_metrics = [], [], {}
         for f in self.metrics:
-            valid_metrics[f.__name__] = []
+            valid_metrics[f] = []
         
         pbar = tqdm(range(num_epochs), desc="train_start", dynamic_ncols=True)
         self.logger.info("train start")
@@ -41,7 +40,7 @@ class Trainer:
             train_losses.append(train_loss)
             valid_losses.append(valid_loss)
             for f, s in zip(self.metrics, valid_scores):
-                valid_metrics[f.__name__].append(s)
+                valid_metrics[f].append(s)
             pbar.set_description(f"epoch {i} | train loss: {train_loss:.2e} | valid loss: {valid_loss:.2e} | valid {self.metrics[0].__name__}: {valid_scores[0]:.2e}")
             self.logger.debug(f"epoch {i} | train loss: {train_loss:.2e} | valid loss: {valid_loss:.2e} | valid {self.metrics[0].__name__}: {valid_scores[0]:.2e}")
 
@@ -67,5 +66,45 @@ class Trainer:
                 self.scheduler.step()
     
 
-    def train_epoch(self,trainloader):
-        
+    def train_epoch(self, trainloader):
+        self.model.train()
+        total_loss = 0
+        for x, y in trainloader:
+            x, y = x.to(self.device), y.to(self.device)
+            self.optimizer.zero_grad()
+            pred = self.model(x)
+            loss = self.loss_func(pred, y)
+            loss.backward()
+            self.optimizer.step()
+            total_loss += loss.item() * len(x)
+        return total_loss / len(trainloader.dataset)
+    
+
+    def evaluate(self, validloader):
+        with torch.no_grad():
+            self.model.eval()
+            total_loss = 0
+            valid_scores = []
+            pred_list = []
+            y_list = []
+            for x, y in validloader:
+                x, y = x.to(self.device), y.to(self.device)
+                pred = self.model(x)
+                loss = self.loss_func(pred, y)
+                total_loss += loss.item() * len(x)
+                pred_list.append(pred.detach().cpu().numpy())
+                y_list.append(y.detach().cpu().numpy())
+            
+            valid_loss = total_loss / len(validloader.dataset)
+            pred = np.concatenate(pred_list)
+            y = np.concatenate(y_list)
+            for f in self.metrics:
+                if hasattr(Metrics, f):
+                    func = getattr(Metrics, f)
+                    valid_scores.append(func(pred, y))
+                else:
+                    raise AttributeError
+            return valid_loss, valid_scores 
+
+            
+

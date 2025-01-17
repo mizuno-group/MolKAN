@@ -9,20 +9,20 @@ def create_experiment(template=None, subdir=None, subname=None):
         if subname is not None:
             files = [f for f in os.listdir(f"experiments/{subdir}") if f.startswith(f"{subname}_exp_")]
             next_exp_num = len(files) + 1
-            new_file = f"experiments/{subdir}/{subname}_exp_{next_exp_num:02}.py"
+            new_file = f"experiments/{subdir}/{subname}_exp_{date_str}_{next_exp_num:02}.py"
         else:
             files = [f for f in os.listdir(f"experiments/{subdir}") if f.startswith("exp_")]
             next_exp_num = len(files) + 1
-            new_file = f"experiments/{subdir}/exp_{next_exp_num:02}.py"
+            new_file = f"experiments/{subdir}/exp_{date_str}_{next_exp_num:02}.py"
     else:
         if subname is not None:
             files = [f for f in os.listdir(f"experiments") if f.startswith(f"{subname}_exp_")]
             next_exp_num = len(files) + 1
-            new_file = f"experiments/{subname}_exp_{next_exp_num:02}.py"
+            new_file = f"experiments/{subname}_exp_{date_str}_{next_exp_num:02}.py"
         else:
             files = [f for f in os.listdir(f"experiments") if f.startswith("exp_")]
             next_exp_num = len(files) + 1
-            new_file = f"experiments/exp_{next_exp_num:02}.py"
+            new_file = f"experiments/exp_{date_str}_{next_exp_num:02}.py"
 
     if template is not None:
         with open(template, mode="r") as template:
