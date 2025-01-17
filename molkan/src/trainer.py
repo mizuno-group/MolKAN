@@ -103,7 +103,7 @@ class Trainer:
                     func = getattr(Metrics, f)
                     valid_scores.append(func(pred, y))
                 else:
-                    raise AttributeError
+                    raise AttributeError(f"Metric not found({f}), check your metric name.")
             return valid_loss, valid_scores 
 
             
