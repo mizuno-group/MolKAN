@@ -13,7 +13,7 @@ from sklearn.metrics import roc_auc_score, r2_score, root_mean_squared_error, me
 
 
 # Initializing Logger
-def init_logger(level_console="info", level_file="debug"):
+def init_logger(outdir, level_console="info", level_file="debug"):
     
     level_dic = {
         "critical": logging.CRITICAL,
@@ -24,8 +24,6 @@ def init_logger(level_console="info", level_file="debug"):
         "notset": logging.NOTSET
     }
 
-    log_dir = os.path.dirname(os.path.abspath(__file__)).replace("experiments", "results_and_logs")
-    os.makedirs(log_dir, exist_ok=True)
     log_name = "log_" + os.path.basename(__file__).replace(".py", "txt")
 
     root_logger = logging.getLogger()
@@ -37,7 +35,7 @@ def init_logger(level_console="info", level_file="debug"):
         datefmt = "%Y%m%d-%H%M%S"
     )
 
-    fh = logging.FileHandler(filename=Path(log_dir, log_name))
+    fh = logging.FileHandler(filename=Path(outdir, log_name))
     fh.setLevel(level_dic[level_file])
     fh.setFormatter(fmt)
 
@@ -121,25 +119,23 @@ def fix_seed(seed:int=42, fix_gpu:bool=False):
 
 # Save and load experiments
 def save_experiment(
-        exp_name, config, model, train_losses, valid_losses,
-        metrics, classes, base_dir
+        outdir, config, model, train_losses, valid_losses,
+        metrics, classes, note=None, save_model=False
         ):
     """
     save the experiment: config, model, metrics, and progress plot
     
     Args:
-        experiment_name (str): name of the experiment
+        outdir (str | Pathlike): output directory
         config (dict): configuration dictionary
         model (nn.Module): model to be saved
         train_losses (list): training losses
         test_losses (list): test losses
         accuracies (list): accuracies
         classes (dict): dictionary of class names
-        base_dir (str): base directory to save the experiment
+        note (str): short note for this running if any
     
     """
-    outdir = os.path.join(base_dir, exp_name)
-    os.makedirs(outdir, exist_ok=True)
     # save config
     configfile = os.path.join(outdir, 'config.json')
     with open(configfile, 'w') as f:
@@ -156,13 +152,14 @@ def save_experiment(
         json.dump(data, f, sort_keys=True, indent=4)
     # plot progress
     plot_progress(
-        exp_name, train_losses, valid_losses, config["num_epochs"], base_dir=base_dir
+        outdir, train_losses, valid_losses, config["num_epochs"], note=note
         )
     # save the model
-    save_checkpoint(exp_name, model, "final", base_dir=base_dir)
+    if save_model:
+        save_checkpoint(model, "final", outdir, note=note)
 
 
-def save_checkpoint(exp_name, model, epoch, base_dir):
+def save_checkpoint(model, epoch, outdir, note):
     """
     save the model checkpoint
 
@@ -173,30 +170,60 @@ def save_checkpoint(exp_name, model, epoch, base_dir):
         base_dir (str): base directory to save the experiment
 
     """
-    outdir = os.path.join(base_dir, exp_name)
-    os.makedirs(outdir, exist_ok=True)
-    cpfile = os.path.join(outdir, f"model_{epoch}.pt")
+    if note is None:
+        cpfile = os.path.join(outdir, f"model_{epoch}.pt")
+    else:
+        cpfile = os.path.join(outdir, f"model_{epoch}_{note}.pt")
     torch.save(model.state_dict(), cpfile)
 
 
 def plot_progress(
-        exp_name:str, train_loss:list, test_loss:list, num_epoch:int,
-        base_dir:str="experiments", xlabel="epoch", ylabel="loss"
+        outdir:str, train_loss:list, valid_loss:list, num_epoch:int,
+        base_dir:str="experiments", xlabel="epoch", ylabel="loss", note=None
         ):
     """ plot learning progress """
-    outdir = os.path.join(base_dir, exp_name)
-    os.makedirs(outdir, exist_ok=True)
     epochs = list(range(1, num_epoch + 1, 1))
     fig, ax = plt.subplots()
     plt.rcParams['font.size'] = 14
     ax.plot(epochs, train_loss, c='navy', label='train')
-    ax.plot(epochs, test_loss, c='darkgoldenrod', label='valid')
+    ax.plot(epochs, valid_loss, c='darkgoldenrod', label='valid')
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
     ax.grid()
     ax.legend()
     plt.tight_layout()
-    plt.savefig(outdir + f'/progress_{ylabel}.tif', dpi=300, bbox_inches='tight')
+    if note is None:
+        plt.savefig(outdir + f'/progress_{ylabel}.tif', dpi=300, bbox_inches='tight')
+    else:
+        plt.savefig(outdir + f'/progress_{ylabel}_{note}.tif', dpi=300, bbox_inches='tight')
+
+
+# Timer related functions
+def timer(start_time):
+    """ Measure the elapsed time """
+    elapsed_time = time.time() - start_time
+    elapsed_hours = int(elapsed_time // 3600)  # hour
+    elapsed_minutes = int((elapsed_time % 3600) // 60)  # min
+    elapsed_seconds = int(elapsed_time % 60)  # sec
+    res = f"{elapsed_hours:02}:{elapsed_minutes:02}:{elapsed_seconds:02}"
+    print(f"Elapsed Time: {res}")
+    return res
+
+
+def get_component_list(model, optimizer, loss_func, device, scheduler=None):
+    """
+    get the components of the model
+    
+    """
+    components = {
+    "model": model.__class__.__name__,
+    "loss_func": loss_func.__class__.__name__ if isinstance(loss_func, torch.nn.Module) else loss_func.__name__,
+    "optimizer": optimizer.__class__.__name__,
+    "device": device.__class__.__name__,
+    "scheduler": scheduler.__class__.__name__,
+    }
+    return components
+
 
 # Metrics functions
 class Metrics:
@@ -285,3 +312,20 @@ class Metrics:
     @staticmethod
     def MAE(pred, y):
         return mean_absolute_error(y, pred)
+
+
+# for argparse input
+def parse_list_or_int(value):
+    try:
+        return int(value)
+    except ValueError:
+        return list(map(int, value.split(', ')))
+
+def parse_list_or_float(value):
+    try:
+        return float(value)
+    except ValueError:
+        return list(map(float, value.split(', ')))
+
+def parse_str_list(value):
+    return value.split(', ')

@@ -12,24 +12,24 @@ from utils import save_checkpoint, Metrics
 
 
 class Trainer:
-    def __init__(self, model, optimizer, loss_func, metrics, exp_name, device, logger, scheduler=None):
+    def __init__(self, model, optimizer, loss_func, metrics, outdir, device, logger, scheduler=None):
         self.model = model.to(device)
         self.optimizer = optimizer
         self.loss_func = loss_func
         self.metrics = metrics
-        self.exp_name = exp_name
+        self.outdir = outdir
         self.device = device
         self.logger = logger
         self.scheduler = scheduler
         
 
-    def train(self, trainloader, validloader, num_epochs, earlystopping_patience=10, save_model_every_n_epochs=0):
+    def train(self, trainloader, validloader, num_epochs, note=None, earlystopping_patience=10):
         train_losses, valid_losses, valid_metrics = [], [], {}
         for f in self.metrics:
             valid_metrics[f] = []
         
         pbar = tqdm(range(num_epochs), desc="train_start", dynamic_ncols=True)
-        self.logger.info("train start")
+        self.logger.info("=== train start ===")
 
         best_loss = float("inf")
         est_cnt = 0
@@ -47,23 +47,28 @@ class Trainer:
             # EarlyStopping
             if best_loss == float("inf"):
                 best_loss = valid_loss
-                if save_model_every_n_epochs > 0 and (i+1) % save_model_every_n_epochs == 0:
-                    save_checkpoint(self.exp_name, self.model, i+1)
+                save_checkpoint(self.model, i+1, self.outdir, note=note)
             elif valid_loss < best_loss:
                 best_loss = valid_loss
-                if save_model_every_n_epochs > 0 and (i+1) % save_model_every_n_epochs == 0:
-                    save_checkpoint(self.exp_name, self.model, i+1)
+                save_checkpoint(self.model, i+1, self.outdir, note=note)
             else:
                 est_cnt += 1
             
             if est_cnt == earlystopping_patience:
-                self.logger.info(f"Earlystopping at epoch {i}")
+                self.logger.info(f"Earlystopping at epoch {i+1}")
+                last_epoch = i+1
                 pbar.close()
                 break
 
             # Scheduler step
             if self.scheduler is not None:
                 self.scheduler.step()
+        
+        self.logger.info("=== train end ===")
+        try:
+            return train_losses, valid_losses, valid_metrics, last_epoch
+        except:
+            return train_losses, valid_losses, valid_metrics, num_epochs
     
 
     def train_epoch(self, trainloader):
@@ -104,7 +109,45 @@ class Trainer:
                     valid_scores.append(func(pred, y))
                 else:
                     raise AttributeError(f"Metric not found({f}), check your metric name.")
-            return valid_loss, valid_scores 
+            return valid_loss, valid_scores
+
+
+def test_func(model, test_loader, metrics, device):
+    """
+    Perform testing
+
+    Args:
+        model (nn.Module): The model
+        test_loader (DataLoader): DataLoader for testing
+        metrics (list): List of metrics
+        device (torch.device): Device
+        logger (logging.Logger): Logger
+    
+    Returns:
+        list: List of test scores
+    """
+
+    with torch.no_grad():
+        model.eval()
+        test_scores = []
+        pred_list = []
+        y_list = []
+        for x, y in test_loader:
+            x, y = x.to(device), y.to(device)
+            pred = model(x)
+            pred_list.append(pred.detach().cpu().numpy())
+            y_list.append(y.detach().cpu().numpy())
+        
+        pred = np.concatenate(pred_list)
+        y = np.concatenate(y_list)
+        for f in metrics:
+            if hasattr(Metrics, f):
+                func = getattr(Metrics, f)
+                test_scores.append(func(pred, y))
+            else:
+                raise AttributeError(f"Metric not found({f}), check your metric name.")
+
+        return test_scores
 
             
 
