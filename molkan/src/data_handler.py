@@ -140,8 +140,8 @@ class SubsetWrapper(Dataset):
     def __init__(self, dataset, transform=None):
         """
         Args:
-            dataset (torch.utils.data.Dataset): 元のDataset
-            transform (callable, optional): 適用するtransform
+            dataset (torch.utils.data.Dataset): original Dataset
+            transform (callable, optional): transformation to apply to the data
         """
         self.dataset = dataset
         self.transform = transform
@@ -150,17 +150,17 @@ class SubsetWrapper(Dataset):
         return len(self.dataset)
 
     def __getitem__(self, idx):
-        image, label = self.dataset[idx]
+        mol, label = self.dataset[idx]
         if self.transform:
-            image = self.transform(image)
-        return image, label
+            mol = self.transform(mol)
+        return mol, label
     
 
 def prep_dataloader(
     dataset: Dataset,
     batch_size: int,
     shuffle: bool = False,
-    num_workers: int = 2,
+    num_workers: int = 16,
     pin_memory: bool = True,
 ) -> DataLoader:
     """
@@ -237,4 +237,3 @@ def prep_data(
         num_workers=num_workers, pin_memory=pin_memory
     )
     return train_loader, test_loader
-
