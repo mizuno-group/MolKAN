@@ -11,12 +11,11 @@ BASE=$(basename $0 .sh)
 
 # run the corresponding .py file
 python $DIR/$BASE.py \
-    data_dir None \
-    --note None \
+    --note "first test run" \
     --seed 42 \
     --train True \
     --num_epochs 100 \
-    --batch_size 256, 512, 1024 \
-    --lr 0.01, 0.001, 0.0001 \
-    --metrics accuracy, AUROC, sensitivity, precision, F1, MCC \
+    --batch_size 64 \
+    --lr 0.001 \
+    --metrics accuracy,AUROC,sensitivity,precision,F1,MCC \
     --num_workers 16 \

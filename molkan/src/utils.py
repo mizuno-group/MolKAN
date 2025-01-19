@@ -25,8 +25,6 @@ def init_logger(outdir, level_console="info", level_file="debug"):
         "notset": logging.NOTSET
     }
 
-    log_name = "log_" + os.path.basename(__file__).replace(".py", "txt")
-
     root_logger = logging.getLogger()
     if root_logger.hasHandlers():
         root_logger.handlers.clear()
@@ -36,7 +34,7 @@ def init_logger(outdir, level_console="info", level_file="debug"):
         datefmt = "%Y%m%d-%H%M%S"
     )
 
-    fh = logging.FileHandler(filename=Path(outdir, log_name))
+    fh = logging.FileHandler(filename=Path(outdir, "log.txt"))
     fh.setLevel(level_dic[level_file])
     fh.setFormatter(fmt)
 
@@ -50,6 +48,7 @@ def init_logger(outdir, level_console="info", level_file="debug"):
     )
 
     logger = logging.getLogger(__name__)
+    logging.getLogger("matplotlib").setLevel(level_dic["warning"])
     return logger
 
 class TqdmLoggingHandler(logging.Handler):
@@ -153,16 +152,12 @@ def save_experiment(
             'classes': classes,
         }
         json.dump(data, f, sort_keys=True, indent=4)
-    # plot progress
-    plot_progress(
-        outdir, train_losses, valid_losses, config["num_epochs"], note=note
-        )
     # save the model
     if save_model:
-        save_checkpoint(model, "final", outdir, note=note)
+        save_checkpoint(model, outdir, note=note)
 
 
-def save_checkpoint(model, epoch, outdir, note):
+def save_checkpoint(model, outdir, note):
     """
     save the model checkpoint
 
@@ -174,15 +169,15 @@ def save_checkpoint(model, epoch, outdir, note):
 
     """
     if note is None:
-        cpfile = os.path.join(outdir, f"model_{epoch}.pt")
+        cpfile = os.path.join(outdir, f"model_best.pt")
     else:
-        cpfile = os.path.join(outdir, f"model_{epoch}_{note}.pt")
+        cpfile = os.path.join(outdir, f"model_best_{note}.pt")
     torch.save(model.state_dict(), cpfile)
 
 
 def plot_progress(
         outdir:str, train_loss:list, valid_loss:list, num_epoch:int,
-        base_dir:str="experiments", xlabel="epoch", ylabel="loss", note=None
+        xlabel="epoch", ylabel="loss", note=None
         ):
     """ plot learning progress """
     epochs = list(range(1, num_epoch + 1, 1))
@@ -196,9 +191,9 @@ def plot_progress(
     ax.legend()
     plt.tight_layout()
     if note is None:
-        plt.savefig(outdir + f'/progress_{ylabel}.tif', dpi=300, bbox_inches='tight')
+        plt.savefig(outdir + f'/progress_{ylabel}.png', dpi=300, bbox_inches='tight')
     else:
-        plt.savefig(outdir + f'/progress_{ylabel}_{note}.tif', dpi=300, bbox_inches='tight')
+        plt.savefig(outdir + f'/progress_{ylabel}_{note}.png', dpi=300, bbox_inches='tight')
 
 
 # Timer related functions
@@ -241,10 +236,10 @@ class Metrics:
     @staticmethod
     def get_confusion_matrix(pred, y):
         pred = (pred >= 0.5).astype(int)
-        TP = np.sum((pred == 1) and (y == 1))
-        TN = np.sum((pred == 0) and (y == 0))
-        FP = np.sum((pred == 1) and (y == 0))
-        FN = np.sum((pred == 0) and (y == 1))
+        TP = np.sum((pred == 1) & (y == 1))
+        TN = np.sum((pred == 0) & (y == 0))
+        FP = np.sum((pred == 1) & (y == 0))
+        FN = np.sum((pred == 0) & (y == 1))
         return TP, TN, FP, FN
     
     @staticmethod
@@ -322,13 +317,13 @@ def parse_list_or_int(value):
     try:
         return int(value)
     except ValueError:
-        return list(map(int, value.split(', ')))
+        return list(map(int, value.split(',')))
 
 def parse_list_or_float(value):
     try:
         return float(value)
     except ValueError:
-        return list(map(float, value.split(', ')))
+        return list(map(float, value.split(',')))
 
 def parse_str_list(value):
-    return value.split(', ')
+    return value.split(',')

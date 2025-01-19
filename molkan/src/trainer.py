@@ -4,11 +4,12 @@
  # @ Description:
  '''
 
+import os
 import numpy as np
 import pandas as pd
 import torch
 from tqdm import tqdm
-from utils import save_checkpoint, Metrics
+from src.utils import save_checkpoint, Metrics
 
 
 class Trainer:
@@ -41,18 +42,18 @@ class Trainer:
             valid_losses.append(valid_loss)
             for f, s in zip(self.metrics, valid_scores):
                 valid_metrics[f].append(s)
-            pbar.set_description(f"epoch {i} | train loss: {train_loss:.2e} | valid loss: {valid_loss:.2e} | valid {self.metrics[0].__name__}: {valid_scores[0]:.2e}")
-            self.logger.debug(f"epoch {i} | train loss: {train_loss:.2e} | valid loss: {valid_loss:.2e} | valid {self.metrics[0].__name__}: {valid_scores[0]:.2e}")
+            pbar.set_description(f"epoch {i} | train loss: {train_loss:.2e} | valid loss: {valid_loss:.2e} | valid {self.metrics[0]}: {valid_scores[0]:.2e}")
+            self.logger.debug(f"epoch {i} | train loss: {train_loss:.2e} | valid loss: {valid_loss:.2e} | valid {self.metrics[0]}: {valid_scores[0]:.2e}")
 
             # EarlyStopping
             if best_loss == float("inf"):
                 best_loss = valid_loss
                 best_epoch = i+1
-                save_checkpoint(self.model, i+1, self.outdir, note=note)
+                save_checkpoint(self.model, self.outdir, note=note)
             elif valid_loss < best_loss:
                 best_loss = valid_loss
                 best_epoch = i+1
-                save_checkpoint(self.model, i+1, self.outdir, note=note)
+                save_checkpoint(self.model, self.outdir, note=note)
             else:
                 est_cnt += 1
             

@@ -8,7 +8,8 @@ import numpy as np
 from typing import Tuple, Optional, List
 
 import torch
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader, Dataset, Subset
+from sklearn.model_selection import train_test_split
 
 
 # frozen
@@ -56,6 +57,7 @@ class MyDataset(Dataset):
             for t in self.transform:
                 if t is not None:
                     out_data = t(out_data)
+                    out_label = t(out_label)
         return out_data, out_label
 
 
@@ -98,15 +100,15 @@ def prep_dataset(data:np.ndarray, label:Optional[np.ndarray]=None, transform=Non
 
 
 def split_dataset(
-    full_dataset:Dataset, split_ratio:float=0.8, shuffle:bool=True,
-    transform:Tuple[Optional[List[callable]], Optional[List[callable]]]=(None, None),
-) -> Tuple[Dataset, Dataset]:
+    full_dataset:Dataset, split_ratio:list=[0.8, 0.1, 0.1], shuffle:bool=True,
+    transform:Optional[List[callable]]=None,
+) -> Tuple[Dataset, Dataset, Dataset]:
     """
     Splits a dataset into training and validation sets.
 
     Args:
         full_dataset (torch.utils.data.Dataset): Dataset instance.
-        split_ratio (float): Ratio of the dataset to use for training.
+        split_ratio (list): Ratio of the dataset to use for train/valid/test.
         shuffle (bool): Whether to shuffle the data before splitting.
 
     Returns:
@@ -114,19 +116,40 @@ def split_dataset(
         Training and validation datasets.
     """
     dataset_size = len(full_dataset)
+    lengths = [int(round(dataset_size * r)) for r in split_ratio]
+    while sum(lengths) > dataset_size:
+        lengths[lengths.index(max(lengths))] -= 1
+    while sum(lengths) < dataset_size:
+        lengths[lengths.index(min(lengths))] += 1
     indices = list(range(dataset_size))
-    split = int(np.floor(split_ratio * dataset_size))
     if shuffle:
         np.random.shuffle(indices)
-    train_indices, val_indices = indices[:split], indices[split:]
-    train_dataset = torch.utils.data.Subset(full_dataset, train_indices)
-    val_dataset = torch.utils.data.Subset(full_dataset, val_indices)
+    train_indices, valid_indices, test_indices= indices[:lengths[0]], indices[lengths[0]:lengths[0]+lengths[1]], indices[lengths[0]+lengths[1]:] 
+    train_dataset = Subset(full_dataset, train_indices)
+    valid_dataset = Subset(full_dataset, valid_indices)
+    test_dataset = Subset(full_dataset, test_indices)
     # transformの適用
-    if transform[0]:
-        train_dataset = SubsetWrapper(train_dataset, transform[0])
-    if transform[1]:
-        val_dataset = SubsetWrapper(val_dataset, transform[1])
-    return train_dataset, val_dataset
+    train_dataset = SubsetWrapper(train_dataset, transform)
+    valid_dataset = SubsetWrapper(valid_dataset, transform)
+    test_dataset = SubsetWrapper(test_dataset, transform)
+    return train_dataset, valid_dataset, test_dataset
+
+
+def split_dataset_stratified(
+    full_dataset:Dataset, split_ratio:list=[0.8, 0.1, 0.1], shuffle:bool=True,
+    transform:Optional[List[callable]]=None
+) -> Tuple[Dataset, Dataset, Dataset]:
+    
+    valid_test_ratio = split_ratio[1] + split_ratio[2]
+    x_train, x_valid_test, y_train, y_valid_test = train_test_split(full_dataset.data, full_dataset.label, 
+                                                                    test_size=valid_test_ratio, stratify=full_dataset.label, shuffle=shuffle)
+    test_ratio = split_ratio[2] * (1 / valid_test_ratio)
+    x_valid, x_test, y_valid, y_test = train_test_split(x_valid_test, y_valid_test,
+                                                        test_size=test_ratio, stratify=y_valid_test, shuffle=shuffle)
+    train_dataset = prep_dataset(x_train, y_train, transform=transform)
+    valid_dataset = prep_dataset(x_valid, y_valid, transform=transform)
+    test_dataset = prep_dataset(x_test, y_test, transform=transform)
+    return train_dataset, valid_dataset, test_dataset
 
 
 class SubsetWrapper(Dataset):
@@ -151,8 +174,9 @@ class SubsetWrapper(Dataset):
 
     def __getitem__(self, idx):
         mol, label = self.dataset[idx]
-        if self.transform:
+        if self.transform is not None:
             mol = self.transform(mol)
+            label = self.transform(label)
         return mol, label
     
 

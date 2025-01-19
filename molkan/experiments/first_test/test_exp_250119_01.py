@@ -8,6 +8,7 @@ import torch.optim as optim
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm, trange
+import pickle
 
 import sys
 project_path = os.path.abspath(__file__).split("/experiments")[0]
@@ -29,7 +30,6 @@ from src.models import *
 # --metrics accuracy, AUROC, sensitivity
 
 parser = argparse.ArgumentParser(description='CLI template')
-parser.add_argument('datadir', type=str, help='working directory that contains the dataset')
 parser.add_argument('--note', type=str, help='short note for this running')
 parser.add_argument('--seed', type=int, default=42, help="random seed")
 parser.add_argument('--train', type=bool, default=True, help='whether to train or not')
@@ -48,11 +48,11 @@ cfg = vars(args)
 utils.fix_seed(seed=cfg["seed"], fix_gpu=True)
 
 # other setup
-cfg["outdir"] = os.path.dirname(__file__.replace("experiments", "results_and_logs")) + os.path.basename(__file__).replace(".py", "") # for output
+cfg["outdir"] = __file__.replace("experiments", "results_and_logs").replace(".py", "") # for output
 os.makedirs(cfg["outdir"], exist_ok=True)
-if cfg["batch_size"] is int:
+if isinstance(cfg["batch_size"], int):
     cfg["batch_size"] = [cfg["batch_size"]]
-if cfg["lr"] is float:
+if isinstance(cfg["lr"], float):
     cfg["lr"] = [cfg["lr"]]
 cfg["device"] = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu') # get device
 for f in cfg["metrics"]:
@@ -72,9 +72,19 @@ def prepare_data(logger):
 
     """ ↓↓↓ LOAD DATA ↓↓↓ """
 
-    # write your code here
+    with open(project_path + "/data/latent/latent_idx_dic.pkl", "rb") as f:
+        latent_idx_dic = pickle.load(f)
+    bace_x = np.load(project_path + "/data/latent/bace_mu.npy")
+    bace_y = pd.read_csv(project_path + "/data/csv/bace.csv", index_col=0)
+    bace_y = np.array(bace_y.loc[latent_idx_dic["bace"]]["Class"])[:,None]
+    bace_set = dh.prep_dataset(bace_x, bace_y)
+    transform = dh.array_to_tensors_flaot()
+    train_set, valid_set, test_set = dh.split_dataset_stratified(bace_set, [0.8, 0.1, 0.1], shuffle=True, transform=transform)
 
     """ ↑↑↑ LOAD DATA ↑↑↑ """
+
+    logger.info(f"num_train_data: {len(train_set)}, num_valid_data: {len(valid_set)}, num_test_data: {len(test_set)}")
+
     train_loaders = []
     valid_loaders = []
     test_loaders = []
@@ -103,16 +113,14 @@ def prepare_model(logger):
 
     logger.info("=== model preparation start ===")
 
-    model = Model() # change this to your model
+    model = KAN_predictor([512, 1], "classification") # change this to your model
     model.to(cfg["device"])
-    loss_func = nn.CrossEntropyLoss() # change this to your loss function
+    loss_func = nn.BCELoss() # change this to your loss function
     optimizers = []
     for lr in cfg["lr"]:
-        optimizer = optim.Adam(model.parameters(), lr=lr) # change this to your optimizer
+        optimizer = optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-4) # change this to your optimizer
         optimizers.append(optimizer)
-    scheduler = optim.lr_scheduler.CosineAnnealingLR(
-        optimizer, T_max=cfg['num_epochs'], eta_min=0
-        ) # change this to your scheduler
+    scheduler = None # change this to your scheduler
     return model, loss_func, optimizers, scheduler
 
 
@@ -172,7 +180,6 @@ def main():
     if args.train:
         # training mode
         logger = utils.init_logger(cfg["outdir"])
-        start = time.time() # for time stamp
 
         # 1. data prep
         train_loaders, valid_loaders, test_loaders = prepare_data(logger)
@@ -184,35 +191,36 @@ def main():
         model, loss_func, optimizers, scheduler = prepare_model(logger)
 
         # 3. training
-        _batch_sizes = [] 
-        for bs in cfg["batch_size"]:
-            _batch_sizes.extend([bs] * len(cfg["lr"]))
-        _lr = []
-        _batch_sizes.extend(cfg["lr"] * len(cfg["batch_size"]))
         train_losses = {}
         valid_losses = {}
         valid_metrics_all = {}
         test_scores_all = {}
         for i, (train_loader, valid_loader, test_loader) in enumerate(zip(train_loaders, valid_loaders, test_loaders)):
             for j, optimizer in enumerate(optimizers):
-                logger.info(f" ===== experiments with batch size: {_batch_sizes[i]}, lr: {_lr[j]} ===== ")
+                logger.info(f" ===== experiments with batch size: {cfg["batch_size"][i]}, lr: {cfg["lr"][j]} ===== ")
+                start = time.time() # for time stamp
+                exp_note = f"bs_{cfg["batch_size"][i]}_lr_{cfg["lr"][j]}"
                 train_loss, valid_loss, valid_metrics, best_epoch  = fit(
                     model, train_loader, valid_loader, loss_func, cfg["metrics"], 
-                    optimizer, scheduler, logger, note=f"bs_{_batch_sizes[i]}_lr_{_lr[j]}"
+                    optimizer, scheduler, logger, note=exp_note
                     )
-                model.load_state_dict(torch.load(f"{cfg['outdir']}/model_{best_epoch}_bs_{_batch_sizes[i]}_lr_{_lr[j]}.pt"))
+                model.load_state_dict(torch.load(f"{cfg['outdir']}/model_best_{exp_note}.pt"))
                 test_scores = test(model, test_loader, loss_func, cfg["metrics"], logger)
-                train_losses[f"bs_{_batch_sizes[i]}_lr_{_lr[j]}"] = train_loss
-                valid_losses[f"bs_{_batch_sizes[i]}_lr_{_lr[j]}"] = valid_loss
-                valid_metrics_all[f"bs_{_batch_sizes[i]}_lr_{_lr[j]}"] = valid_metrics
-                test_scores_all[f"bs_{_batch_sizes[i]}_lr_{_lr[j]}"] = test_scores
+                train_losses[exp_note] = train_loss
+                valid_losses[exp_note] = valid_loss
+                valid_metrics_all[exp_note] = valid_metrics
+                test_scores_all[exp_note] = test_scores
+                utils.plot_progress(cfg["outdir"], train_loss, valid_loss, len(train_loss), note=exp_note)
+                elapsed_time = utils.timer(start) # for time stamp
+                logger.info(f" === best_epoch: {best_epoch}, elapsed_time: {elapsed_time} === ")
+                logger.info(f" ===== experiments with batch size: {cfg["batch_size"][i]}, lr: {cfg["lr"][j]} finished ===== ")
+
         
         # 4. modify config
         logger.info(" === saving config and results === ")
         components = utils.get_component_list(model, optimizer, loss_func, cfg["device"], scheduler)
         cfg.update(components) # update config
-        elapsed_time = utils.timer(start) # for time stamp
-        cfg["elapsed_time"] = elapsed_time
+
         # 5. save experiment & config
         utils.save_experiment(
             outdir=cfg["outdir"], config=cfg, model=model, train_losses=train_losses,
