@@ -36,6 +36,7 @@ parser.add_argument('--train', type=bool, default=True, help='whether to train o
 parser.add_argument('--num_epochs', type=int, default=100, help='number of epochs')
 parser.add_argument('--batch_size', type=utils.parse_list_or_int, default=128, help="batch size (int or list(int))")
 parser.add_argument('--lr', type=utils.parse_list_or_float, default=0.001, help="learning rate (float or list(float))")
+parser.add_argument('--lambda', type=utils.parse_list_or_float, default=0.0, help="lambda for regularization")
 parser.add_argument('--metrics', type=utils.parse_str_list, help="metrics to evaluate (list(str))")
 parser.add_argument('--num_workers', type=int, default=16, help='number of workers for dataloader')
 
@@ -72,9 +73,19 @@ def prepare_data(logger):
 
     """ ↓↓↓ LOAD DATA ↓↓↓ """
 
-    # write your code here
+    with open(project_path + "/data/latent/latent_idx_dic.pkl", "rb") as f:
+        latent_idx_dic = pickle.load(f)
+    bace_x = np.load(project_path + "/data/latent/bace_mu.npy")
+    bace_y = pd.read_csv(project_path + "/data/csv/bace.csv", index_col=0)
+    bace_y = np.array(bace_y.loc[latent_idx_dic["bace"]]["Class"])[:,None]
+    bace_set = dh.prep_dataset(bace_x, bace_y)
+    transform = dh.array_to_tensors_flaot()
+    train_set, valid_set, test_set = dh.split_dataset_stratified(bace_set, [0.8, 0.1, 0.1], shuffle=True, transform=transform)
 
     """ ↑↑↑ LOAD DATA ↑↑↑ """
+
+    logger.info(f"num_train_data: {len(train_set)}, num_valid_data: {len(valid_set)}, num_test_data: {len(test_set)}")
+
     train_loaders = []
     valid_loaders = []
     test_loaders = []
@@ -103,16 +114,15 @@ def prepare_model(logger):
 
     logger.info("=== model preparation start ===")
 
-    model = Model() # change this to your model
+    model = KAN_predictor([512, 1], "classification") # change this to your model
     model.to(cfg["device"])
-    loss_func = nn.CrossEntropyLoss() # change this to your loss function
+    loss_func = nn.BCELoss() # change this to your loss function
     optimizers = []
     for lr in cfg["lr"]:
-        optimizer = optim.Adam(model.parameters(), lr=lr) # change this to your optimizer
-        optimizers.append(optimizer)
-    scheduler = optim.lr_scheduler.CosineAnnealingLR(
-        optimizer, T_max=cfg['num_epochs'], eta_min=0
-        ) # change this to your scheduler
+        for l in cfg["lambda"]:
+            optimizer = optim.AdamW(model.parameters(), lr=lr, weight_decay=l) # change this to your optimizer
+            optimizers.append(optimizer)
+    scheduler = None # change this to your scheduler
     return model, loss_func, optimizers, scheduler
 
 
@@ -189,14 +199,15 @@ def main():
         test_scores_all = {}
         for i, (train_loader, valid_loader, test_loader) in enumerate(zip(train_loaders, valid_loaders, test_loaders)):
             for j, optimizer in enumerate(optimizers):
-                logger.info(f" ===== experiments with batch size: {cfg["batch_size"][i]}, lr: {cfg["lr"][j]} ===== ")
+                k = (j+1) % len(cfg["lambda"])
+                logger.info(f" ===== experiments with batch size: {cfg["batch_size"][i]}, lr: {cfg["lr"][j//len(cfg["lambda"])]}, lambda: {cfg["lambda"][k]} ===== ")
                 start = time.time() # for time stamp
-                exp_note = f"bs_{cfg["batch_size"][i]}_lr_{cfg["lr"][j]}"
+                exp_note = f"bs_{cfg["batch_size"][i]}_lr_{cfg["lr"][j//len(cfg["lambda"])]}_lambda_{cfg["lambda"][k]}"
                 train_loss, valid_loss, valid_metrics, best_epoch  = fit(
                     model, train_loader, valid_loader, loss_func, cfg["metrics"], 
                     optimizer, scheduler, logger, note=exp_note
                     )
-                model.load_state_dict(torch.load(f"{cfg['outdir']}/model_best_{exp_note}.pt"))
+                model.load_state_dict(torch.load(f"{cfg['outdir']}/models/model_best_{exp_note}.pt"))
                 test_scores = test(model, test_loader, loss_func, cfg["metrics"], logger)
                 train_losses[exp_note] = train_loss
                 valid_losses[exp_note] = valid_loss
@@ -205,15 +216,22 @@ def main():
                 utils.plot_progress(cfg["outdir"], train_loss, valid_loss, len(train_loss), note=exp_note)
                 elapsed_time = utils.timer(start) # for time stamp
                 logger.info(f" === best_epoch: {best_epoch}, elapsed_time: {elapsed_time} === ")
-                logger.info(f" ===== experiments with batch size: {cfg["batch_size"][i]}, lr: {cfg["lr"][j]} finished ===== ")
-        
+                logger.info(f" ===== experiments with batch size: {cfg["batch_size"][i]}, lr: {cfg["lr"][j//len(cfg["lambda"])]}, lambda: {cfg["lambda"][k]} finished ===== ")
 
+        
         # 4. modify config
         logger.info(" === saving config and results === ")
         components = utils.get_component_list(model, optimizer, loss_func, cfg["device"], scheduler)
         cfg.update(components) # update config
 
         # 5. save experiment & config
+        results = [[], []]
+        exps = []
+        for dict, key in test_scores_all.items():
+            exps.append(key)
+            results[0].append(dict[cfg["metrics"][0]])
+            results[1].append(dict[cfg["metrics"][1]])
+        utils.plot_experiments_results(cfg["outdir"], results, exps, cfg["metrics"][:2])
         utils.save_experiment(
             outdir=cfg["outdir"], config=cfg, model=model, train_losses=train_losses,
             valid_losses=valid_losses, valid_metrics=valid_metrics_all, test_scores=test_scores_all, classes=None

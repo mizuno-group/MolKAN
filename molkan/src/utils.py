@@ -168,10 +168,12 @@ def save_checkpoint(model, outdir, note):
         base_dir (str): base directory to save the experiment
 
     """
+    model_dir = os.path.join(outdir, 'models')
+    os.makedirs(model_dir, exist_ok=True)
     if note is None:
-        cpfile = os.path.join(outdir, f"model_best.pt")
+        cpfile = os.path.join(model_dir, f"models_best.pt")
     else:
-        cpfile = os.path.join(outdir, f"model_best_{note}.pt")
+        cpfile = os.path.join(model_dir, f"model_best_{note}.pt")
     torch.save(model.state_dict(), cpfile)
 
 
@@ -190,10 +192,31 @@ def plot_progress(
     ax.grid()
     ax.legend()
     plt.tight_layout()
+    pltdir = os.path.join(outdir, 'progress')
+    os.makedirs(pltdir, exist_ok=True)
     if note is None:
-        plt.savefig(outdir + f'/progress_{ylabel}.png', dpi=300, bbox_inches='tight')
+        plt.savefig(os.path.join(pltdir, f"{ylabel}.png"), dpi=300, bbox_inches='tight')
     else:
-        plt.savefig(outdir + f'/progress_{ylabel}_{note}.png', dpi=300, bbox_inches='tight')
+        plt.savefig(os.path.join(pltdir, f"{ylabel}_{note}.png"), dpi=300, bbox_inches='tight')
+
+def plot_experiments_results(
+        outdir, results:list[list], xlabel:list, ylabel:list, note=None
+        ):
+    """ plot the results of experiments """
+    bar_width = 0.35
+    index = np.arange(len(results[0]))
+    plt.figure(figsize=(20, 12))
+    for i, result in enumerate(results):
+        plt.bar(index + i * bar_width, result, bar_width, label=ylabel[i])
+    plt.xticks(index + bar_width*len(results)/2, xlabel, rotation=90)
+    plt.legend()
+    plt.ylabel("test scores")
+    plt.title("Test Scores of Experiments")
+    plt.tight_layout()
+    if note is None:
+        plt.savefig(os.path.join(outdir, f"test_scores.png"), dpi=300, bbox_inches='tight')
+    else:
+        plt.savefig(os.path.join(outdir, f"test_scores_{note}.png"), dpi=300, bbox_inches='tight')
 
 
 # Timer related functions

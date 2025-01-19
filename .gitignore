@@ -127,3 +127,13 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+
+# Ignore data directory
+./molkan/data/
+
+# Ignore experiments_dev directory
+./molkan/experiments_dev/
+
+# Ignore results_and_logs directory
+./molkan/results_and_logs/
