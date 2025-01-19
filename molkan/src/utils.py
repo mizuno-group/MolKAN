@@ -1,5 +1,6 @@
 import logging
 import datetime
+import time
 from tqdm import tqdm
 from pathlib import Path
 import os
@@ -120,7 +121,7 @@ def fix_seed(seed:int=42, fix_gpu:bool=False):
 # Save and load experiments
 def save_experiment(
         outdir, config, model, train_losses, valid_losses,
-        metrics, classes, note=None, save_model=False
+        valid_metrics, test_scores, classes, note=None, save_model=False
         ):
     """
     save the experiment: config, model, metrics, and progress plot
@@ -130,8 +131,9 @@ def save_experiment(
         config (dict): configuration dictionary
         model (nn.Module): model to be saved
         train_losses (list): training losses
-        test_losses (list): test losses
-        accuracies (list): accuracies
+        valid_losses (list): valid losses
+        valid_metrics (dict): valid_metrics
+        test_scores (dict): test_scores
         classes (dict): dictionary of class names
         note (str): short note for this running if any
     
@@ -141,12 +143,13 @@ def save_experiment(
     with open(configfile, 'w') as f:
         json.dump(config, f, sort_keys=True, indent=4)
     # save metrics
-    jsonfile = os.path.join(outdir, 'metrics.json')
+    jsonfile = os.path.join(outdir, 'loss_metrics.json')
     with open(jsonfile, 'w') as f:
         data = {
             'train_losses': train_losses,
             'valid_losses': valid_losses,
-            'metrics': metrics,
+            'valid_metrics': valid_metrics,
+            'test_scores': test_scores,
             'classes': classes,
         }
         json.dump(data, f, sort_keys=True, indent=4)
@@ -245,7 +248,7 @@ class Metrics:
         return TP, TN, FP, FN
     
     @staticmethod
-    def accracy(pred, y):
+    def accuracy(pred, y):
         pred = (pred >= 0.5).astype(int)
         try:
             return np.sum(pred == y) / len(pred)

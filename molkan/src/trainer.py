@@ -47,16 +47,17 @@ class Trainer:
             # EarlyStopping
             if best_loss == float("inf"):
                 best_loss = valid_loss
+                best_epoch = i+1
                 save_checkpoint(self.model, i+1, self.outdir, note=note)
             elif valid_loss < best_loss:
                 best_loss = valid_loss
+                best_epoch = i+1
                 save_checkpoint(self.model, i+1, self.outdir, note=note)
             else:
                 est_cnt += 1
             
             if est_cnt == earlystopping_patience:
                 self.logger.info(f"Earlystopping at epoch {i+1}")
-                last_epoch = i+1
                 pbar.close()
                 break
 
@@ -65,10 +66,7 @@ class Trainer:
                 self.scheduler.step()
         
         self.logger.info("=== train end ===")
-        try:
-            return train_losses, valid_losses, valid_metrics, last_epoch
-        except:
-            return train_losses, valid_losses, valid_metrics, num_epochs
+        return train_losses, valid_losses, valid_metrics, best_epoch
     
 
     def train_epoch(self, trainloader):

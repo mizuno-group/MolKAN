@@ -9,12 +9,16 @@ import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm, trange
 
+import sys
+project_path = os.path.abspath(__file__).split("/experiments")[0]
+sys.path.append(project_path)
+
 # original packages in src
-from ..src import utils
-from ..src import data_handler as dh
-from ..src.trainer import Trainer, test_func
+from src import utils
+from src import data_handler as dh
+from src.trainer import Trainer, test_func
 """ === change based on the model you want to use === """
-from ..src.models import *
+from src.models import *
 
 
 """ === Config Setup: change based on your experiment === """

@@ -25,21 +25,33 @@ def create_experiment(template=None, subdir=None, subname=None):
             new_file = f"experiments/exp_{date_str}_{next_exp_num:02}.py"
 
     if template is not None:
-        with open(template, mode="r") as template:
-            content = template.read()
+        with open(template, mode="r") as template_py:
+            py_content = template_py.read()
+        with open(template.replace(".py", ".sh")) as template_sh:
+            sh_content = template_sh.read()
     else:
-        with open("experiments/template.py", "r") as template:
-            content = template.read()
+        with open("experiments/template.py", "r") as template_py:
+            py_content = template_py.read()
+        with open("experiments/template.sh") as template_sh:
+            sh_content = template_sh.read()
             
     with open(new_file, "w") as new_exp:
-        new_exp.write(content)
-    print(f"New experiment created: {new_file}")
+        new_exp.write(py_content)
+    with open(new_file.replace(".py", ".sh"), "w") as new_sh:
+        new_sh.write(sh_content)
+    print(f"New experiment created: {new_file.replace(".py", "")}")
 
 if __name__ == "__main__":
+
+    def parse_None_or_str(s):
+        if s == "None":
+            return None
+        return str(s)
+
     parser = argparse.ArgumentParser()
-    parser.add_argument("--template", help="template file if you want to use other template temporary")
-    parser.add_argument("--subdir", help="directory under experiments if you need")
-    parser.add_argument("--subname", help="experiment file name if you need")
+    parser.add_argument("--template", type=parse_None_or_str, help="template file if you want to use other template temporary")
+    parser.add_argument("--subdir", type=parse_None_or_str, help="directory under experiments if you need")
+    parser.add_argument("--subname", type=parse_None_or_str, help="experiment file name if you need")
     args = parser.parse_args()
 
     create_experiment(args.template, args.subdir, args.subname)
