@@ -13,7 +13,7 @@ from pathlib import Path
 import shutil
 import pickle
 
-from utils.logger import *
+from ToxPred.MolKAN.molkan.src.utils import *
 
 class KAN_predictor(nn.Module):
     def __init__(self, width:list, device, working_dir:Path, results_dir_name:str, LOGGER):

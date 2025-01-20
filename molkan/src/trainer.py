@@ -54,6 +54,7 @@ class Trainer:
                 best_loss = valid_loss
                 best_epoch = i+1
                 save_checkpoint(self.model, self.outdir, note=note)
+                est_cnt = 0
             else:
                 est_cnt += 1
             
