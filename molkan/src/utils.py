@@ -7,8 +7,12 @@ import os
 import sys
 import random
 import json
-import matplotlib.pyplot as plt 
+import matplotlib.pyplot as plt
+import seaborn as sns
+import plotly.graph_objs as go
+import plotly.io as pio
 import numpy as np
+import pandas as pd
 import torch
 from sklearn.metrics import roc_auc_score, r2_score, root_mean_squared_error, mean_absolute_error
 
@@ -205,13 +209,25 @@ def plot_experiments_results(
     """ plot the results of experiments """
     bar_width = 0.35
     index = np.arange(len(results[0]))
-    plt.figure(figsize=(20, 12))
+
+    top_indices = np.argsort(results[0])[-3:][::-1]
+    label_colors = ['black'] * len(xlabel)  # 初期はすべて黒
+    top_colors = ['red', 'blue', 'green']
+    for i, idx in enumerate(top_indices):
+        label_colors[idx] = top_colors[i]
+
+    plt.figure(figsize=(30, 18))
     for i, result in enumerate(results):
         plt.bar(index + i * bar_width, result, bar_width, label=ylabel[i])
     plt.xticks(index + bar_width*len(results)/2, xlabel, rotation=90)
+    ax = plt.gca()  # 現在のAxesを取得
+    
+    for label, color in zip(ax.get_xticklabels(), label_colors):
+        label.set_color(color)
+    
     plt.legend()
     plt.ylabel("test scores")
-    plt.title("Test Scores of Experiments")
+    plt.title(f"Test Scores of {note}")
     plt.tight_layout()
     if note is None:
         plt.savefig(os.path.join(outdir, f"test_scores.png"), dpi=300, bbox_inches='tight')

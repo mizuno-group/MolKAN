@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 from torch import nn
 from kan import KAN
+from fastkan import FastKAN
 
 
 class KAN_predictor(nn.Module):
@@ -20,6 +21,21 @@ class KAN_predictor(nn.Module):
             layers.append(nn.Sigmoid())
         self.kan = nn.ModuleList(layers)
 
+    def forward(self, x):
+        for layer in self.kan:
+            x = layer(x)
+        return x
+
+class FastKAN_predictor(nn.Module):
+    def __init__(self, width:list, mode, grid_min, grid_max, num_grids):
+        super().__init__()
+        self.width = width
+        self.mode = mode
+        layers = [FastKAN(width, grid_min=grid_min, grid_max=grid_max, num_grids=num_grids)]
+        if self.mode == "classification":
+            layers.append(nn.Sigmoid())
+        self.kan = nn.ModuleList(layers)
+    
     def forward(self, x):
         for layer in self.kan:
             x = layer(x)
@@ -38,7 +54,7 @@ class MLP_predictor(nn.Module):
             layers.append(nn.Sigmoid())
         self.mlp = nn.ModuleList(layers)
     
-    def forward(self, input):
+    def forward(self, x):
         for layer in self.mlp:
             x = layer(x)
         return x

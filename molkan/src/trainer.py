@@ -13,7 +13,7 @@ from src.utils import save_checkpoint, Metrics
 
 
 class Trainer:
-    def __init__(self, model, optimizer, loss_func, metrics, outdir, device, logger, scheduler=None):
+    def __init__(self, model, optimizer, loss_func, metrics, outdir, device, logger, scheduler=None, scheduler_free=False):
         self.model = model.to(device)
         self.optimizer = optimizer
         self.loss_func = loss_func
@@ -22,6 +22,7 @@ class Trainer:
         self.device = device
         self.logger = logger
         self.scheduler = scheduler
+        self.scheduler_free = scheduler_free
         
 
     def train(self, trainloader, validloader, num_epochs, note=None, earlystopping_patience=10):
@@ -73,6 +74,8 @@ class Trainer:
 
     def train_epoch(self, trainloader):
         self.model.train()
+        if self.scheduler_free:
+            self.optimizer.train()
         total_loss = 0
         for x, y in trainloader:
             x, y = x.to(self.device), y.to(self.device)
@@ -88,6 +91,8 @@ class Trainer:
     def evaluate(self, validloader):
         with torch.no_grad():
             self.model.eval()
+            if self.scheduler_free:
+                self.optimizer.eval()
             total_loss = 0
             valid_scores = []
             pred_list = []

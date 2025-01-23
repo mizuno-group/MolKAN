@@ -1,0 +1,46 @@
+{
+    "batch_size": [
+        4,
+        16,
+        64,
+        256,
+        1024
+    ],
+    "device": "device",
+    "lambda": [
+        0.01,
+        0.001,
+        0.0001
+    ],
+    "loss_func": "BCELoss",
+    "lr": [
+        0.01,
+        0.001,
+        0.0001
+    ],
+    "metrics": [
+        "accuracy",
+        "AUROC",
+        "sensitivity",
+        "precision",
+        "F1",
+        "MCC"
+    ],
+    "model": "FastKAN_predictor",
+    "note": "BACE grid search (FastKAN 1 layer)",
+    "num_epochs": 300,
+    "num_grids": [
+        8,
+        16,
+        32
+    ],
+    "num_test_data": 38,
+    "num_training_data": 303,
+    "num_valid_data": 38,
+    "num_workers": 16,
+    "optimizer": "AdamW",
+    "outdir": "/workspace/ToxPred/MolKAN/molkan/results_and_logs/FastKAN/bace_batch_lr_lamdba_exp_250120_01",
+    "scheduler": "NoneType",
+    "seed": 42,
+    "train": true
+}
