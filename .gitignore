@@ -131,3 +131,6 @@ dmypy.json
 # model checkpoint
 *.pt
 *.pth
+
+# private experiments results
+**/results_and_logs/
