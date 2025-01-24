@@ -202,6 +202,7 @@ def plot_progress(
         plt.savefig(os.path.join(pltdir, f"{ylabel}.png"), dpi=300, bbox_inches='tight')
     else:
         plt.savefig(os.path.join(pltdir, f"{ylabel}_{note}.png"), dpi=300, bbox_inches='tight')
+    plt.close()
 
 def plot_experiments_results(
         outdir, results:list[list], xlabel:list, ylabel:list, note=None
@@ -365,4 +366,7 @@ def parse_list_or_float(value):
         return list(map(float, value.split(',')))
 
 def parse_str_list(value):
-    return value.split(',')
+    if "," in value:
+        return value.split(',')
+    else:
+        return list[value]

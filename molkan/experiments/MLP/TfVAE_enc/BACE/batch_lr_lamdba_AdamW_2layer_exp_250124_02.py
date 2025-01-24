@@ -115,10 +115,10 @@ def prepare_model(logger, lr, l):
     """
     logger.info("=== model set preparation start ===")
 
-    model = MLP_predictor([512, 1], "classification") # change this to your model
+    model = MLP_predictor([512, 64, 1], "classification") # change this to your model
     model.to(cfg["device"])
     loss_func = nn.BCELoss() # change this to your loss function
-    optimizer = RAdamScheduleFree(model.parameters(), lr=lr, weight_decay=l) # change this to your optimizer
+    optimizer = optim.AdamW(model.parameters(), lr=lr, weight_decay=l) # change this to your optimizer
     scheduler = None # change this to your scheduler
     return model, loss_func, optimizer, scheduler
 
@@ -200,7 +200,7 @@ def main():
                     exp_note = f"bs_{cfg["batch_size"][i]}_lr_{lr}_lambda_{l}"
                     train_loss, valid_loss, valid_metrics, best_epoch  = fit(
                         model, train_loader, valid_loader, loss_func, cfg["metrics"], 
-                        optimizer, scheduler, logger, scheduler_free=True, note=exp_note
+                        optimizer, scheduler, logger, scheduler_free=False, note=exp_note
                         )
                     model.load_state_dict(torch.load(f"{cfg['outdir']}/models/model_best_{exp_note}.pt"))
                     test_scores = test(model, test_loader, loss_func, cfg["metrics"], logger)

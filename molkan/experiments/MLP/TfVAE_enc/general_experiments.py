@@ -33,12 +33,18 @@ from src.models import *
 
 parser = argparse.ArgumentParser(description='CLI template')
 parser.add_argument('--note', type=str, help='short note for this running')
+parser.add_argument("--datasets", type=str, help="datasets name you want to use")
+parser.add_argument("--label_columns", type=utils.parse_str_list, help="label columns names")
+parser.add_argument("--results_dirname", type=str, help="results directory name")
 parser.add_argument('--seed', type=int, default=42, help="random seed")
 parser.add_argument('--train', type=bool, default=True, help='whether to train or not')
+parser.add_argument("--mode", type=str, default="classification", help="classification or regression")
 parser.add_argument('--num_epochs', type=int, default=100, help='number of epochs')
+parser.add_argument("--layer", type=int, help="Number of layer(s)")
 parser.add_argument('--batch_size', type=utils.parse_list_or_int, default=128, help="batch size (int or list(int))")
 parser.add_argument('--lr', type=utils.parse_list_or_float, default=0.001, help="learning rate (float or list(float))")
 parser.add_argument('--lambda', type=utils.parse_list_or_float, default=0.0, help="lambda for regularization")
+parser.add_argument("--scheduler_free", type=bool, help="whether use scheduler_free or not")
 parser.add_argument('--metrics', type=utils.parse_str_list, help="metrics to evaluate (list(str))")
 parser.add_argument('--num_workers', type=int, default=16, help='number of workers for dataloader')
 
@@ -51,7 +57,18 @@ cfg = vars(args)
 utils.fix_seed(seed=cfg["seed"], fix_gpu=True)
 
 # other setup
-cfg["outdir"] = __file__.replace("experiments", "results_and_logs").replace(".py", "") # for output
+
+dataset_dict = {"BACE": "bace",
+                                "ClinTox": "clintox_M",
+                                "CYP2C9": "cyp2c9_inhib",
+                                "CYP3A4": "cyp3a4_inhib",
+                                "hERG": "herg_karim",
+                                "LD50": "ld50",
+                                "SIDER": "sider",
+                                "Tox21": "tox21_M",
+                                "ToxCast": "toxcast_M"}
+
+cfg["outdir"] = os.path.join(os.path.dirname(__file__).replace("experiments", "results_and_logs"), cfg["datasets"], cfg["results_dirname"]) # for output
 os.makedirs(cfg["outdir"], exist_ok=True)
 if isinstance(cfg["batch_size"], int):
     cfg["batch_size"] = [cfg["batch_size"]]
@@ -75,14 +92,19 @@ def prepare_data(logger):
 
     """ ↓↓↓ LOAD DATA ↓↓↓ """
 
-    with open(project_path + "/data/latent/latent_idx_dic.pkl", "rb") as f:
-        latent_idx_dic = pickle.load(f)
-    bace_x = np.load(project_path + "/data/latent/bace_mu.npy")
-    bace_y = pd.read_csv(project_path + "/data/csv/bace.csv", index_col=0)
-    bace_y = np.array(bace_y.loc[latent_idx_dic["bace"]]["Class"])[:,None]
-    bace_set = dh.prep_dataset(bace_x, bace_y)
+    data_name = dataset_dict[cfg["datasets"]]
+    x = np.load(project_path + f"/data/TfVAE_repr/{data_name}_mu.npy")
+    y = pd.read_csv(project_path + f"/data/tox_csv/{data_name}.csv", index_col=0)
+    if len(cfg["label_columns"]) == 1:
+        y = np.array(y[cfg["label_columns"]])[:,None]
+    else:
+        y = np.array(y[cfg["label_columns"]])
+    dset = dh.prep_dataset(x, y)
     transform = dh.array_to_tensors_flaot()
-    train_set, valid_set, test_set = dh.split_dataset_stratified(bace_set, [0.8, 0.1, 0.1], shuffle=True, transform=transform)
+    if len(cfg["label_columns"]) == 1:
+        train_set, valid_set, test_set = dh.split_dataset_stratified(dset, [0.8, 0.1, 0.1], shuffle=True, transform=transform)
+    else:
+        train_set, valid_set, test_set = dh.split_dataset(dset, [0.8, 0.1, 0.1], shuffle=True, transform=transform)
 
     """ ↑↑↑ LOAD DATA ↑↑↑ """
 
@@ -114,12 +136,31 @@ def prepare_model(logger, lr, l):
     Use if statements as needed to control with arguments.
     """
     logger.info("=== model set preparation start ===")
-
-    model = MLP_predictor([512, 1], "classification") # change this to your model
+    
+    if cfg["layer"] == 1:
+        model = MLP_predictor([512, 1], cfg["mode"]) # change this to your model
+    elif cfg["layer"] == 2:
+        model = MLP_predictor([512, 64, 1], cfg["mode"])
+    elif cfg["layer"] == 3:
+        model = MLP_predictor([512, 128, 16, 1], cfg["mode"])
+    else:
+        raise ValueError("invalid num_layer, must be 1 to 3")
     model.to(cfg["device"])
-    loss_func = nn.BCELoss() # change this to your loss function
-    optimizer = RAdamScheduleFree(model.parameters(), lr=lr, weight_decay=l) # change this to your optimizer
+
+    if cfg["mode"] == "classification":
+        loss_func = nn.BCELoss() # change this to your loss function
+    elif cfg["mode"] == "regression":
+        loss_func = lambda y_pred, y_true: torch.mean((y_pred - y_true) ** 2)
+    else:
+        raise NameError("invalid mode, must be classification or regression")
+    
+    if cfg["scheduler_free"]:
+        optimizer = RAdamScheduleFree(model.parameters(), lr=lr, weight_decay=l)
+    else:    
+        optimizer = optim.AdamW(model.parameters(), lr=lr, weight_decay=l) # change this to your optimizer
+
     scheduler = None # change this to your scheduler
+
     return model, loss_func, optimizer, scheduler
 
 
@@ -144,7 +185,7 @@ def fit(model, train_loader, valid_loader, loss_func, metrics, optimizer, schedu
 
     trainer = Trainer(
         model=model, optimizer=optimizer, loss_func=loss_func, metrics=metrics,
-        outdir=cfg["outdir"], device=cfg["device"], logger=logger, scheduler=scheduler, scheduler_free=scheduler_free
+        outdir=cfg["outdir"], device=cfg["device"], logger=logger, scheduler=scheduler, scheduler_free=cfg["scheduler_free"]
         )
     train_loss, valid_loss, valid_metrics, best_epoch = trainer.train(
         train_loader, valid_loader, num_epochs=cfg["num_epochs"],
@@ -200,7 +241,7 @@ def main():
                     exp_note = f"bs_{cfg["batch_size"][i]}_lr_{lr}_lambda_{l}"
                     train_loss, valid_loss, valid_metrics, best_epoch  = fit(
                         model, train_loader, valid_loader, loss_func, cfg["metrics"], 
-                        optimizer, scheduler, logger, scheduler_free=True, note=exp_note
+                        optimizer, scheduler, logger, note=exp_note
                         )
                     model.load_state_dict(torch.load(f"{cfg['outdir']}/models/model_best_{exp_note}.pt"))
                     test_scores = test(model, test_loader, loss_func, cfg["metrics"], logger)
@@ -224,7 +265,7 @@ def main():
         plot_scores = cfg["metrics"][:2]
 
         for idx, sc in enumerate(plot_scores):
-            fig = plt.figure(figsize=(25, 5))
+            fig = plt.figure(figsize=(25, 7))
             axes = fig.subplots(1, len(cfg["batch_size"]))
             vmin = min([s[idx] for s in test_scores_all.values()])
             vmax = max([s[idx] for s in test_scores_all.values()])
@@ -242,8 +283,9 @@ def main():
             cbar_ax = fig.add_axes([0.92, 0.15, 0.02, 0.7])
             plt.colorbar(axes[len(cfg["batch_size"])-1].collections[0], cax=cbar_ax)
             cbar_ax.set_title("Score", fontsize=10)
-            plt.tight_layout(rect=[0, 0, 0.9, 0.97])
+            plt.tight_layout(rect=[0, 0, 0.9, 0.98])
             plt.savefig(os.path.join(cfg["outdir"], f"test_{sc}.png"), dpi=300)
+        
         
         utils.save_experiment(
             outdir=cfg["outdir"], config=cfg, model=model, train_losses=train_losses,

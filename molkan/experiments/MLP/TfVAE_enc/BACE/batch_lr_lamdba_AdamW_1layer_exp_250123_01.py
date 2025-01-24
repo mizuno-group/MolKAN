@@ -224,7 +224,7 @@ def main():
 
         for idx, sc in enumerate(plot_scores):
             fig = plt.figure(figsize=(25, 5))
-            axes = fig.subplots(len(cfg["batch_size"]))
+            axes = fig.subplots(1, len(cfg["batch_size"]))
             vmin = min([s[idx] for s in test_scores_all.values()])
             vmax = max([s[idx] for s in test_scores_all.values()])
             for i in range(len(cfg["batch_size"])):

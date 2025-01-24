@@ -9,7 +9,7 @@ def create_experiment(template=None, subdir=None, subname=None):
         os.makedirs(abs_dir + f"/experiments/{subdir}", exist_ok=True)
         if subname is not None:
             files = [f for f in os.listdir(abs_dir + f"/experiments/{subdir}") if f.startswith(f"{subname}_exp_")]
-            next_exp_num = len(files) + 1
+            next_exp_num = int(len(files) / 2) + 1
             new_file = abs_dir + f"/experiments/{subdir}/{subname}_exp_{date_str}_{next_exp_num:02}.py"
         else:
             files = [f for f in os.listdir(abs_dir + f"/experiments/{subdir}") if f.startswith("exp_")]
