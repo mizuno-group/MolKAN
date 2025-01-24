@@ -369,4 +369,4 @@ def parse_str_list(value):
     if "," in value:
         return value.split(',')
     else:
-        return list[value]
+        return list(value)
