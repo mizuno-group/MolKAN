@@ -96,10 +96,7 @@ def prepare_data(logger):
     data_name = dataset_dict[cfg["datasets"]]
     x = np.load(project_path + f"/data/TfVAE_repr/{data_name}_mu.npy")
     y = pd.read_csv(project_path + f"/data/tox_csv/{data_name}.csv", index_col=0)
-    if len(cfg["label_columns"]) == 1:
-        y = np.array(y[cfg["label_columns"]])[:,None]
-    else:
-        y = np.array(y[cfg["label_columns"]])
+    y = np.array(y[cfg["label_columns"]])
     dset = dh.prep_dataset(x, y)
     transform = dh.array_to_tensors_flaot()
     if len(cfg["label_columns"]) == 1:
