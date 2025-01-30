@@ -44,7 +44,7 @@ parser.add_argument("--layer", type=int, help="Number of layer(s)")
 parser.add_argument('--batch_size', type=utils.parse_list_or_int, default=128, help="batch size (int or list(int))")
 parser.add_argument('--lr', type=utils.parse_list_or_float, default=0.001, help="learning rate (float or list(float))")
 parser.add_argument('--lambda', type=utils.parse_list_or_float, default=0.0, help="lambda for regularization")
-parser.add_argument("--scheduler_free", type=bool, help="whether use scheduler_free or not")
+parser.add_argument("--scheduler_free", type=str, help="whether use scheduler_free or not")
 parser.add_argument('--metrics', type=utils.parse_str_list, help="metrics to evaluate (list(str))")
 parser.add_argument('--num_workers', type=int, default=16, help='number of workers for dataloader')
 
@@ -75,6 +75,12 @@ if isinstance(cfg["batch_size"], int):
 if isinstance(cfg["lr"], float):
     cfg["lr"] = [cfg["lr"]]
 cfg["device"] = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu') # get device
+if cfg["scheduler_free"] == "True":
+    cfg["scheduler_free"] = True
+elif cfg["scheduler_free"] == "False":
+    cfg["scheduler_free"] = False
+else:
+    raise ValueError("Invalid scheduler_free argument. True or False ?")
 for f in cfg["metrics"]:
     if not hasattr(utils.Metrics, f):
         raise AttributeError(f"Invalid metric: {f}")
@@ -95,10 +101,7 @@ def prepare_data(logger):
     data_name = dataset_dict[cfg["datasets"]]
     x = np.load(project_path + f"/data/TfVAE_repr/{data_name}_mu.npy")
     y = pd.read_csv(project_path + f"/data/tox_csv/{data_name}.csv", index_col=0)
-    if len(cfg["label_columns"]) == 1:
-        y = np.array(y[cfg["label_columns"]])[:,None]
-    else:
-        y = np.array(y[cfg["label_columns"]])
+    y = np.array(y[cfg["label_columns"]])
     dset = dh.prep_dataset(x, y)
     transform = dh.array_to_tensors_flaot()
     if len(cfg["label_columns"]) == 1:
@@ -150,7 +153,7 @@ def prepare_model(logger, lr, l):
     if cfg["mode"] == "classification":
         loss_func = nn.BCELoss() # change this to your loss function
     elif cfg["mode"] == "regression":
-        loss_func = lambda y_pred, y_true: torch.mean((y_pred - y_true) ** 2)
+        loss_func = utils.RMSE()
     else:
         raise NameError("invalid mode, must be classification or regression")
     
@@ -160,6 +163,11 @@ def prepare_model(logger, lr, l):
         optimizer = optim.AdamW(model.parameters(), lr=lr, weight_decay=l) # change this to your optimizer
 
     scheduler = None # change this to your scheduler
+
+    logger.info(f"model: {model.__class__.__name__}")
+    logger.info(f"loss_func: {loss_func.__class__.__name__}")
+    logger.info(f"optimizer: {optimizer.__class__.__name__}")
+    logger.info(f"scheduler: {scheduler.__class__.__name__}")
 
     return model, loss_func, optimizer, scheduler
 
@@ -270,7 +278,7 @@ def main():
             vmin = min([s[idx] for s in test_scores_all.values()])
             vmax = max([s[idx] for s in test_scores_all.values()])
             for i in range(len(cfg["batch_size"])):
-                data = np.zeros((len(cfg["lr"]), len(cfg["lambda"])))
+                data = np.zeros((len(cfg["lambda"]), len(cfg["lr"])))
                 for j in range(len(cfg["lr"])):
                     for k in range(len(cfg["lambda"])):
                         data[k, j] = test_scores_all[f"bs_{cfg["batch_size"][i]}_lr_{cfg["lr"][j]}_lambda_{cfg["lambda"][k]}"][idx]

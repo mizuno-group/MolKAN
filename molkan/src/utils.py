@@ -263,6 +263,12 @@ def get_component_list(model, optimizer, loss_func, device, scheduler=None):
     return components
 
 
+# Loss
+class RMSE():
+    def __call__(self, y_pred, y_true):
+        return torch.mean((y_pred - y_true) ** 2)
+    
+
 # Metrics functions
 class Metrics:
 

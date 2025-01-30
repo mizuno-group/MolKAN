@@ -18,13 +18,13 @@ today=$(date +'%y%m%d')
 
 seed=(42 222)
 layer=(1 2 3)
-scheduler_free=("False" "True")
+scheduler_free=("False")
 
 for s in "${seed[@]}"; do
     for l in "${layer[@]}"; do
         for scl in "${scheduler_free[@]}"; do
             
-            if [ "$scl" == "False" ]; then
+            if [ "$scl" == "True" ]; then
                 optim="RAdamScheduleFree"
             else
                 optim="AdamW"
