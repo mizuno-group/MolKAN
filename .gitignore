@@ -134,3 +134,6 @@ dmypy.json
 
 # private experiments results
 **/results_and_logs/
+
+# private HPC scripts
+**/miyabi/
