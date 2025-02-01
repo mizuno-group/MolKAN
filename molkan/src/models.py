@@ -105,7 +105,7 @@ class FourierKAN_Predictor(nn.Module):
         self.width = width
         self.num_grids = num_grids
         self.mode = mode
-        layers = [NaiveFourierKANLayer(inputdim, outdim, self.num_grids, addbias=True, smooth_initialization=True)
+        layers = [NaiveFourierKANLayer(inputdim, outdim, self.num_grids, addbias=True, smooth_initialization=False)
                                                 for inputdim, outdim in zip(width[:-1], width[1:])]
         if self.mode == "classification":
             layers.append(nn.Sigmoid())
