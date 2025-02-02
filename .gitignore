@@ -137,3 +137,4 @@ dmypy.json
 
 # private HPC scripts
 **/miyabi/
+**/wisteria/

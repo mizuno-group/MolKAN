@@ -200,7 +200,7 @@ def fit(model, train_loader, valid_loader, loss_func, metrics, optimizer, schedu
         )
     train_loss, valid_loss, valid_metrics, best_epoch = trainer.train(
         train_loader, valid_loader, num_epochs=cfg["num_epochs"],
-        note=note, earlystopping_patience=30
+        note=note, earlystopping_patience=50
         )
     return train_loss, valid_loss, valid_metrics, best_epoch
 
@@ -285,7 +285,7 @@ def main():
                 data = np.zeros((len(cfg["batch_size"]), len(cfg["lr"])))
                 for j in range(len(cfg["batch_size"])):
                     for k in range(len(cfg["lr"])):
-                        data[j, k] = test_scores_all[f"grids_{cfg["num_grids"][i]}_bs_{cfg["batch_size"][j]}_lr_{cfg["lr"][k]}_lambda_1.0"][idx]
+                        data[j, k] = test_scores_all[f"grids_{cfg["num_grids"][i]}_bs_{cfg["batch_size"][j]}_lr_{cfg["lr"][k]}_lambda_0.0"][idx]
                 sns.heatmap(data, annot=True, fmt=".3f", xticklabels=cfg["lr"], yticklabels=cfg["batch_size"], ax=axes[i], cmap="Blues", cbar=False, vmin=vmin, vmax=vmax)
                 axes[i].set_title(f"grids: {cfg["num_grids"][i]}", fontsize=18)
 
