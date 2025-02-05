@@ -107,7 +107,7 @@ def prepare_data(logger):
     y = np.array(y[cfg["label_columns"]])
     dset = dh.prep_dataset(x, y)
     transform = dh.array_to_tensors_flaot()
-    if len(cfg["label_columns"]) == 1:
+    if len(cfg["label_columns"]) == 1 and cfg["mode"] == "classification":
         train_set, valid_set, test_set = dh.split_dataset_stratified(dset, [0.8, 0.1, 0.1], shuffle=True, transform=transform)
     else:
         train_set, valid_set, test_set = dh.split_dataset(dset, [0.8, 0.1, 0.1], shuffle=True, transform=transform)

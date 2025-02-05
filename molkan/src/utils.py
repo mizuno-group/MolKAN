@@ -255,7 +255,7 @@ def get_component_list(model, optimizer, loss_func, device, scheduler=None):
     """
     components = {
     "model": model.__class__.__name__,
-    "loss_func": loss_func.__class__.__name__ if isinstance(loss_func, torch.nn.Module) else loss_func.__name__,
+    "loss_func": loss_func.__class__.__name__,
     "optimizer": optimizer.__class__.__name__,
     "device": device.__class__.__name__,
     "scheduler": scheduler.__class__.__name__,
@@ -275,7 +275,7 @@ class Metrics:
     @staticmethod
     def AUROC(pred, y):
         try:
-            return roc_auc_score(y, pred)
+            return roc_auc_score(y, pred, average="macro")
         except:
             return None
     

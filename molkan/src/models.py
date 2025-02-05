@@ -100,13 +100,16 @@ class NaiveFourierKANLayer(th.nn.Module):
         return y
 
 class FourierKAN_Predictor(nn.Module):
-    def __init__(self, width:list, mode, num_grids):
+    def __init__(self, width:list, mode, num_grids, dropout=0):
         super().__init__()
         self.width = width
         self.num_grids = num_grids
         self.mode = mode
+        num_layers = len(self.width) - 1
         layers = [NaiveFourierKANLayer(inputdim, outdim, self.num_grids, addbias=True, smooth_initialization=False)
                                                 for inputdim, outdim in zip(width[:-1], width[1:])]
+        for i in range(num_layers-1):
+            layers.insert(i*2+1, nn.Dropout(dropout))
         if self.mode == "classification":
             layers.append(nn.Sigmoid())
         self.kan = nn.ModuleList(layers)
@@ -118,14 +121,16 @@ class FourierKAN_Predictor(nn.Module):
 
 
 class MLP_predictor(nn.Module):
-    def __init__(self, width:list, mode):
+    def __init__(self, width:list, mode, dropout=0):
         super().__init__()
         self.width = width
         self.mode = mode
         num_layers = len(self.width) - 1
         layers = [nn.Linear(self.width[i], self.width[i+1]) for i in range(num_layers)]
         for i in range(num_layers-1):
-            layers.insert(i*2+1, nn.ReLU())
+            layers.insert(i*2+1, nn.SiLU())
+        for i in range(num_layers-1):
+            layers.insert(i*3+2, nn.Dropout(dropout))
         if self.mode == "classification":
             layers.append(nn.Sigmoid())
         self.mlp = nn.ModuleList(layers)
