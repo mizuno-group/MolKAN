@@ -81,38 +81,19 @@ class KAN_Tuner:
                 loss_func = utils.RMSE()
             
             # Train and validation
-            pbar = tqdm(range(500), desc="train_start", dynamic_ncols=True)
+            pbar = tqdm(range(50), desc="train_start", dynamic_ncols=True)
             self.logger.info("=== train start ===")
-            
-            best_loss = float("inf")
-            est_cnt = 0
             
             for i in pbar:
                 train_loss = train_epoch(model, optimizer, loss_func, trainloader)
                 valid_loss = evaluate(model, optimizer, loss_func, validloader)
+                pbar.set_description(f"epoch {i+1} | train loss: {train_loss:.2e} | valid loss: {valid_loss:.2e}")
+                self.logger.info(f"epoch {i+1} | train loss: {train_loss:.2e} | valid loss: {valid_loss:.2e}")
 
-                # EarlyStopping
-                if best_loss == float("inf"):
-                    best_loss = valid_loss
-                    best_epoch = i+1
-                    trial.set_user_attr("model_state_dict", model.state_dict())
-                elif valid_loss < best_loss:
-                    best_loss = valid_loss
-                    best_epoch = i+1
-                    trial.set_user_attr("model_state_dict", model.state_dict())
-                    est_cnt = 0
-                else:
-                    est_cnt += 1
-            
-                if est_cnt == 50:
-                    self.logger.info(f"=== earlystopping at epoch {i+1} ===")
-                    pbar.close()
-                    break
-                
-                if i+1 == 500:
-                    self.logger.info(f"=== train end at epoch 500 ===")
+            trial.set_user_attr("model_state_dict", model.state_dict())
+            self.logger.info(f"=== train finished ===")
 
-            return best_loss
+            return valid_loss
         
         return objective
     
@@ -231,38 +212,19 @@ class MLP_Tuner:
                 loss_func = utils.RMSE()
             
             # Train and validation
-            pbar = tqdm(range(500), desc="train_start", dynamic_ncols=True)
+            pbar = tqdm(range(50), desc="train_start", dynamic_ncols=True)
             self.logger.info("=== train start ===")
-            
-            best_loss = float("inf")
-            est_cnt = 0
             
             for i in pbar:
                 train_loss = train_epoch(model, optimizer, loss_func, trainloader)
                 valid_loss = evaluate(model, optimizer, loss_func, validloader)
+                pbar.set_description(f"epoch {i+1} | train loss: {train_loss:.2e} | valid loss: {valid_loss:.2e}")
+                self.logger.info(f"epoch {i+1} | train loss: {train_loss:.2e} | valid loss: {valid_loss:.2e}")
 
-                # EarlyStopping
-                if best_loss == float("inf"):
-                    best_loss = valid_loss
-                    best_epoch = i+1
-                    trial.set_user_attr("model_state_dict", model.state_dict())
-                elif valid_loss < best_loss:
-                    best_loss = valid_loss
-                    best_epoch = i+1
-                    trial.set_user_attr("model_state_dict", model.state_dict())
-                    est_cnt = 0
-                else:
-                    est_cnt += 1
-            
-                if est_cnt == 50:
-                    self.logger.info(f"=== earlystopping at epoch {i+1} ===")
-                    pbar.close()
-                    break
-                
-                if i+1 == 500:
-                    self.logger.info(f"=== train end at epoch 500 ===")
+            trial.set_user_attr("model_state_dict", model.state_dict())
+            self.logger.info(f"=== train finished ===")
 
-            return best_loss
+            return valid_loss
         
         return objective
     
