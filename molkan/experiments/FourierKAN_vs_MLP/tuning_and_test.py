@@ -70,7 +70,10 @@ if __name__ == "__main__":
 
             # prepare datasets
             utils.fix_seed(seed)
-            x = np.load(project_path + f"/data/{repr}/{data_name}_mu.npy")
+            if repr == "TfVAE_repr":
+                x = np.load(project_path + f"/data/{repr}/{data_name}_mu.npy")
+            else:
+                x = np.load(project_path + f"/data/{repr}/{data_name}.npy")
             y = pd.read_csv(project_path + f"/data/tox_csv/{data_name}.csv", index_col=0)
             y = np.array(y[cfg["label_columns"]])
             num_labels = len(cfg["label_columns"])

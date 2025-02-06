@@ -64,7 +64,7 @@ class KAN_Tuner:
             hidden_layer_dim = trial.suggest_int("hidden_layer_dim", 1, 1024)
             num_grids = trial.suggest_int("num_grids", 1, 8)
             batch_size = trial.suggest_categorical("batch_size", [4, 16, 64, 256, 1024])
-            learning_rate = trial.suggest_float("learning_rate", 1.0e-2, 1.0e-5, log=True)
+            learning_rate = trial.suggest_float("learning_rate", 1.0e-5, 1.0e-2, log=True)
             dropout = trial.suggest_categorical("dropout", [0, 0.2, 0.5])
 
             # prepare DataLoader
@@ -73,7 +73,8 @@ class KAN_Tuner:
 
             # prepare model, optimizer, loss_func
             model = FourierKAN_Predictor([512, hidden_layer_dim, self.outdim], mode=self.mode, num_grids=num_grids, dropout=dropout)
-            optimizer = RAdamScheduleFree(self.model.parameters(), lr=learning_rate, weight_decay=0)
+            model = model.to(self.device)
+            optimizer = RAdamScheduleFree(params=model.parameters(), lr=learning_rate, weight_decay=0)
             if self.mode == "classification":
                 loss_func = torch.nn.BCELoss()
             else:
@@ -141,7 +142,8 @@ class KAN_Tuner:
     def optimize_and_test(self):
         self.logger.info("===== Hyperparameters tuning start =====")
         objective = self._make_objective()
-        study = optuna.create_study(pruner=optuna.pruners.SuccessiveHalvingPruner(), direction="minimize")
+        study = optuna.create_study(sampler=optuna.samplers.TPESampler(seed=self.seed),
+                                    pruner=optuna.pruners.SuccessiveHalvingPruner(), direction="minimize")
         study.optimize(objective, n_trials=150)
         best_trial = study.best_trial
         best_model_state = best_trial.user_attrs["model_state_dict"]
@@ -155,6 +157,7 @@ class KAN_Tuner:
         # prepare model
         model = FourierKAN_Predictor([512, best_params["hidden_layer_dim"], self.outdim],self.mode, best_params["num_grids"], best_params["dropout"])
         model.load_state_dict(torch.load(os.path.join(self.outdir, "models", f"{self.note}_best_model.pt")))
+        model = model.to(self.device)
         # test
         test_scores = test_func(model, testloader, self.metrics, self.device)
         return test_scores, list(best_params.keys()), list(best_params.values())
@@ -211,7 +214,7 @@ class MLP_Tuner:
 
             hidden_layer_dim = trial.suggest_int("hidden_layer_dim", 1, 1024)
             batch_size = trial.suggest_categorical("batch_size", [4, 16, 64, 256, 1024])
-            learning_rate = trial.suggest_float("learning_rate", 1.0e-2, 1.0e-5, log=True)
+            learning_rate = trial.suggest_float("learning_rate", 1.0e-5, 1.0e-2, log=True)
             dropout = trial.suggest_categorical("dropout", [0, 0.2, 0.5])
 
             # prepare DataLoader
@@ -220,7 +223,8 @@ class MLP_Tuner:
 
             # prepare model, optimizer, loss_func
             model = MLP_predictor([512, hidden_layer_dim, self.outdim], mode=self.mode, dropout=dropout)
-            optimizer = RAdamScheduleFree(self.model.parameters(), lr=learning_rate, weight_decay=0)
+            model = model.to(self.device)
+            optimizer = RAdamScheduleFree(model.parameters(), lr=learning_rate, weight_decay=0)
             if self.mode == "classification":
                 loss_func = torch.nn.BCELoss()
             else:
@@ -265,8 +269,9 @@ class MLP_Tuner:
     def optimize_and_test(self):
         self.logger.info("===== Hyperparameters tuning start =====")
         objective = self._make_objective()
-        study = optuna.create_study(pruner=optuna.pruners.SuccessiveHalvingPruner(), direction="minimize")
-        study.optimize(objective, n_trials=150)
+        study = optuna.create_study(sampler=optuna.samplers.TPESampler(seed=self.seed),
+                                    pruner=optuna.pruners.SuccessiveHalvingPruner(), direction="minimize")
+        study.optimize(objective, n_trials=120)
         best_trial = study.best_trial
         best_model_state = best_trial.user_attrs["model_state_dict"]
         os.makedirs(os.path.join(self.outdir, "models"), exist_ok=True)
@@ -279,6 +284,7 @@ class MLP_Tuner:
         # prepare model
         model = MLP_predictor([512, best_params["hidden_layer_dim"], self.outdim],self.mode, best_params["dropout"])
         model.load_state_dict(torch.load(os.path.join(self.outdir, "models", f"{self.note}_best_model.pt")))
+        model = model.to(self.device)
         # test
         test_scores = test_func(model, testloader, self.metrics, self.device)
         return test_scores, list(best_params.keys()), list(best_params.values())
