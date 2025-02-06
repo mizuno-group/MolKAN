@@ -86,6 +86,10 @@ if __name__ == "__main__":
             else:
                 train_set, valid_set, test_set = dh.split_dataset(dset, [0.8, 0.1, 0.1], shuffle=True, transform=transform)
             
+            logger.info(f"train data num: {len(train_set)}")
+            logger.info(f"valid data num: {len(valid_set)}")
+            logger.info(f"test data num: {len(test_set)}")
+
             if cfg["model"] == "KAN":
                 tuner = KAN_Tuner(seed, cfg["mode"], train_set, valid_set, test_set, num_labels, cfg["device"], metrics, logger, cfg["outdir"], trial_note)
             elif cfg["model"] == "MLP":
