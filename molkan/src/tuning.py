@@ -81,8 +81,8 @@ class KAN_Tuner:
                 loss_func = utils.RMSE()
             
             # Train and validation
-            pbar = tqdm(range(50), desc="train_start", dynamic_ncols=True)
             self.logger.info("=== train start ===")
+            pbar = tqdm(range(50), desc="train_start", dynamic_ncols=True)
             
             for i in pbar:
                 train_loss = train_epoch(model, optimizer, loss_func, trainloader)
@@ -212,8 +212,8 @@ class MLP_Tuner:
                 loss_func = utils.RMSE()
             
             # Train and validation
-            pbar = tqdm(range(50), desc="train_start", dynamic_ncols=True)
             self.logger.info("=== train start ===")
+            pbar = tqdm(range(50), desc="train_start", dynamic_ncols=True)
             
             for i in pbar:
                 train_loss = train_epoch(model, optimizer, loss_func, trainloader)
