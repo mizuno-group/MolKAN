@@ -264,6 +264,10 @@ def get_component_list(model, optimizer, loss_func, device, scheduler=None):
 
 
 # Loss
+class BCELoss():
+    def __call__(self, y_pred, y_true, weight):
+        return torch.nn.functional.binary_cross_entropy(y_pred, y_true, weight)
+
 class MSE():
     def __call__(self, y_pred, y_true, weight):
         return torch.sum(((y_pred- y_true) ** 2) * weight) / torch.sum(weight)

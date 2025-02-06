@@ -84,7 +84,7 @@ class KAN_Tuner:
             model = model.to(self.device)
             optimizer = RAdamScheduleFree(params=model.parameters(), lr=learning_rate, weight_decay=0)
             if self.mode == "classification":
-                loss_func = torch.nn.BCELoss()
+                loss_func = utils.BCELoss()
             else:
                 loss_func = utils.MSE()
             
@@ -223,7 +223,7 @@ class MLP_Tuner:
             model = model.to(self.device)
             optimizer = RAdamScheduleFree(model.parameters(), lr=learning_rate, weight_decay=0)
             if self.mode == "classification":
-                loss_func = torch.nn.BCELoss()
+                loss_func = utils.BCELoss()
             else:
                 loss_func = utils.MSE()
             
