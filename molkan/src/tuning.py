@@ -88,7 +88,7 @@ class KAN_Tuner:
                 train_loss = train_epoch(model, optimizer, loss_func, trainloader)
                 valid_loss = evaluate(model, optimizer, loss_func, validloader)
                 pbar.set_description(f"epoch {i+1} | train loss: {train_loss:.2e} | valid loss: {valid_loss:.2e}")
-                self.logger.info(f"epoch {i+1} | train loss: {train_loss:.2e} | valid loss: {valid_loss:.2e}")
+                self.logger.debug(f"epoch {i+1} | train loss: {train_loss:.2e} | valid loss: {valid_loss:.2e}")
 
             trial.set_user_attr("model_state_dict", model.state_dict())
             self.logger.info(f"=== train finished ===")
@@ -219,7 +219,7 @@ class MLP_Tuner:
                 train_loss = train_epoch(model, optimizer, loss_func, trainloader)
                 valid_loss = evaluate(model, optimizer, loss_func, validloader)
                 pbar.set_description(f"epoch {i+1} | train loss: {train_loss:.2e} | valid loss: {valid_loss:.2e}")
-                self.logger.info(f"epoch {i+1} | train loss: {train_loss:.2e} | valid loss: {valid_loss:.2e}")
+                self.logger.debug(f"epoch {i+1} | train loss: {train_loss:.2e} | valid loss: {valid_loss:.2e}")
 
             trial.set_user_attr("model_state_dict", model.state_dict())
             self.logger.info(f"=== train finished ===")
