@@ -68,6 +68,8 @@ if __name__ == "__main__":
             logger = utils.init_logger(cfg["outdir"])
             trial_note = f"seed{seed}_{repr}"
 
+            logger.info(f"===== {trial_note} =====")
+
             # prepare datasets
             utils.fix_seed(seed)
             if repr == "TfVAE_repr":
