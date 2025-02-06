@@ -92,6 +92,9 @@ if __name__ == "__main__":
                 raise NameError("check model argument. KAN or MLP ?")
 
             test_score, params_names, params_values = tuner.optimize_and_test()
+            
+            for metric, score in zip(metrics, test_score):
+                logger.info(f"test_{metric}: {score:.3f}")
 
             try:
                 params.loc[trial_note] = params_values
