@@ -264,9 +264,9 @@ def get_component_list(model, optimizer, loss_func, device, scheduler=None):
 
 
 # Loss
-class RMSE():
-    def __call__(self, y_pred, y_true):
-        return torch.mean((y_pred - y_true) ** 2)
+class MSE():
+    def __call__(self, y_pred, y_true, weight):
+        return torch.sum(((y_pred- y_true) ** 2) * weight) / torch.sum(weight)
     
 
 # Metrics functions
@@ -275,7 +275,13 @@ class Metrics:
     @staticmethod
     def AUROC(pred, y):
         try:
-            return roc_auc_score(y, pred, average="macro")
+            n_labels = y.shape[1]
+            auroc_list = []
+            for i in range(n_labels):
+                mask = ~np.isnan(y[:, i])
+                auroc = roc_auc_score(y[mask, i], pred[mask, i])
+                auroc_list.append(auroc)
+            return np.mean(auroc_list)
         except:
             return None
     

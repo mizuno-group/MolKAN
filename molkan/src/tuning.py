@@ -36,7 +36,11 @@ class KAN_Tuner:
                 x, y = x.to(self.device), y.to(self.device)
                 optimizer.zero_grad()
                 pred = model(x)
-                loss = loss_func(pred, y)
+
+                mask = (~torch.isnan(y)).float()
+                y = torch.where(torch.isnan(y), torch.zeros_like(y), y)
+                
+                loss = loss_func(pred, y, weight=mask)
                 loss.backward()
                 optimizer.step()
                 total_loss += loss.item() * len(x)
@@ -51,7 +55,11 @@ class KAN_Tuner:
                 for x, y in validloader:
                     x, y = x.to(self.device), y.to(self.device)
                     pred = model(x)
-                    loss = loss_func(pred, y)
+
+                    mask = (~torch.isnan(y)).float()
+                    y = torch.where(torch.isnan(y), torch.zeros_like(y), y)
+
+                    loss = loss_func(pred, y, mask)
                     total_loss += loss.item() * len(x)
             
                 valid_loss = total_loss / len(validloader.dataset)
@@ -78,7 +86,7 @@ class KAN_Tuner:
             if self.mode == "classification":
                 loss_func = torch.nn.BCELoss()
             else:
-                loss_func = utils.RMSE()
+                loss_func = utils.MSE()
             
             # Train and validation
             self.logger.info("=== train start ===")
@@ -168,7 +176,11 @@ class MLP_Tuner:
                 x, y = x.to(self.device), y.to(self.device)
                 optimizer.zero_grad()
                 pred = model(x)
-                loss = loss_func(pred, y)
+
+                mask = (~torch.isnan(y)).float()
+                y = torch.where(torch.isnan(y), torch.zeros_like(y), y)
+
+                loss = loss_func(pred, y, mask)
                 loss.backward()
                 optimizer.step()
                 total_loss += loss.item() * len(x)
@@ -183,7 +195,11 @@ class MLP_Tuner:
                 for x, y in validloader:
                     x, y = x.to(self.device), y.to(self.device)
                     pred = model(x)
-                    loss = loss_func(pred, y)
+
+                    mask = (~torch.isnan(y)).float()
+                    y = torch.where(torch.isnan(y), torch.zeros_like(y), y)
+
+                    loss = loss_func(pred, y, mask)
                     total_loss += loss.item() * len(x)
             
                 valid_loss = total_loss / len(validloader.dataset)
@@ -209,7 +225,7 @@ class MLP_Tuner:
             if self.mode == "classification":
                 loss_func = torch.nn.BCELoss()
             else:
-                loss_func = utils.RMSE()
+                loss_func = utils.MSE()
             
             # Train and validation
             self.logger.info("=== train start ===")
