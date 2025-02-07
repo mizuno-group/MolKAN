@@ -92,13 +92,19 @@ class KAN_Tuner:
             self.logger.info("=== train start ===")
             pbar = tqdm(range(50), desc="train_start", dynamic_ncols=True)
             
+            train_losses = []
+            valid_losses = []
             for i in pbar:
                 train_loss = train_epoch(model, optimizer, loss_func, trainloader)
                 valid_loss = evaluate(model, optimizer, loss_func, validloader)
+                train_losses.append(train_loss)
+                valid_losses.append(valid_loss)
                 pbar.set_description(f"epoch {i+1} | train loss: {train_loss:.2e} | valid loss: {valid_loss:.2e}")
                 self.logger.debug(f"epoch {i+1} | train loss: {train_loss:.2e} | valid loss: {valid_loss:.2e}")
 
             trial.set_user_attr("model_state_dict", model.state_dict())
+            trial.set_user_attr("train_losses", train_losses)
+            trial.set_user_attr("valid_losses", valid_losses)
             self.logger.info(f"=== train finished ===")
 
             return valid_loss
@@ -135,6 +141,8 @@ class KAN_Tuner:
                                     pruner=optuna.pruners.SuccessiveHalvingPruner(), direction="minimize")
         study.optimize(objective, n_trials=150)
         best_trial = study.best_trial
+        os.makedirs(os.path.join(self.outdir, "plots"), exist_ok=True)
+        utils.plot_progress(os.path.join(self.outdir, "plots"), best_trial.user_attrs["train_losses"], best_trial.user_attrs["valid_losses"], 50, note=self.note)
         best_model_state = best_trial.user_attrs["model_state_dict"]
         os.makedirs(os.path.join(self.outdir, "models"), exist_ok=True)
         torch.save(best_model_state, os.path.join(self.outdir, "models", f"{self.note}_best_model.pt"))
@@ -231,13 +239,19 @@ class MLP_Tuner:
             self.logger.info("=== train start ===")
             pbar = tqdm(range(50), desc="train_start", dynamic_ncols=True)
             
+            train_losses = []
+            valid_losses = []
             for i in pbar:
                 train_loss = train_epoch(model, optimizer, loss_func, trainloader)
                 valid_loss = evaluate(model, optimizer, loss_func, validloader)
+                train_losses.append(train_loss)
+                valid_losses.append(valid_loss)
                 pbar.set_description(f"epoch {i+1} | train loss: {train_loss:.2e} | valid loss: {valid_loss:.2e}")
                 self.logger.debug(f"epoch {i+1} | train loss: {train_loss:.2e} | valid loss: {valid_loss:.2e}")
 
             trial.set_user_attr("model_state_dict", model.state_dict())
+            trial.set_user_attr("train_losses", train_losses)
+            trial.set_user_attr("valid_losses", valid_losses)
             self.logger.info(f"=== train finished ===")
 
             return valid_loss
@@ -251,6 +265,8 @@ class MLP_Tuner:
                                     pruner=optuna.pruners.SuccessiveHalvingPruner(), direction="minimize")
         study.optimize(objective, n_trials=120)
         best_trial = study.best_trial
+        os.makedirs(os.path.join(self.outdir, "plots"), exist_ok=True)
+        utils.plot_progress(os.path.join(self.outdir, "plots"), best_trial.user_attrs["train_losses"], best_trial.user_attrs["valid_losses"], 50, note=self.note)
         best_model_state = best_trial.user_attrs["model_state_dict"]
         os.makedirs(os.path.join(self.outdir, "models"), exist_ok=True)
         torch.save(best_model_state, os.path.join(self.outdir, "models", f"{self.note}_best_model.pt"))

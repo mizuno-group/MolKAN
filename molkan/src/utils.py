@@ -278,16 +278,16 @@ class Metrics:
 
     @staticmethod
     def AUROC(pred, y):
-        try:
-            n_labels = y.shape[1]
-            auroc_list = []
-            for i in range(n_labels):
-                mask = ~np.isnan(y[:, i])
+        n_labels = y.shape[1]
+        auroc_list = []
+        for i in range(n_labels):
+            mask = ~np.isnan(y[:, i])
+            try:
                 auroc = roc_auc_score(y[mask, i], pred[mask, i])
-                auroc_list.append(auroc)
-            return np.mean(auroc_list)
-        except:
-            return None
+            except:
+                auroc = np.nan
+            auroc_list.append(auroc)
+        return np.nanmean(auroc_list)
     
     @staticmethod
     def get_confusion_matrix(pred, y):
@@ -302,7 +302,7 @@ class Metrics:
     def accuracy(pred, y):
         pred = (pred >= 0.5).astype(int)
         try:
-            return np.sum(pred == y) / len(pred)
+            return np.sum(pred == y) / np.sum(~np.isnan(y))
         except:
             return None
 

@@ -47,6 +47,19 @@ cfg["device"] = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 cfg["outdir"] = os.path.join(os.path.dirname(__file__).replace("experiments", "results_and_logs"), f"{cfg["datasets"]}_{cfg["mode"]}", f"{datetime.now().strftime("%y%m%d")}_{cfg["model"]}")
 os.makedirs(cfg["outdir"], exist_ok=True)
 
+merged = [cfg["label_columns"][0]]
+for c in cfg["label_columns"][1:]:
+    if c.startswith('"'):
+        merged.append(c.replace('"', ""))
+    elif c.startswith(" "):
+        if c.endswith('"'):
+            merged[-1] += ("," + c.replace('"', ""))
+        else:
+            merged[-1] += ("," + c)
+    else:
+        merged.append(c)
+cfg["label_columns"] = merged
+
 
 if __name__ == "__main__":
 
