@@ -73,10 +73,13 @@ if __name__ == "__main__":
 
     results = pd.DataFrame(columns=metrics)
 
-    # 3 seeds
-    for seed in [42, 222, 2025]:
-        # TfVAE_repr or unimol_repr
-        for repr in ["TfVAE_repr", "unimol_repr"]:
+    reprs = ["TfVAE_repr", "unimol_repr"]
+    seeds = [42, 7, 1234, 2025, 31415]
+
+    # TfVAE_repr or unimol_repr
+    for repr in reprs:
+        # 5 seed
+        for i, seed in enumerate(seeds):
             
             logger = utils.init_logger(cfg["outdir"])
             trial_note = f"seed{seed}_{repr}"
@@ -122,6 +125,18 @@ if __name__ == "__main__":
                 params.loc[trial_note] = params_values
             
             results.loc[trial_note] = test_score
+
+            if i+1 == len(seeds):
+                scores = results.tail(5)
+                final_scores = []
+                for col in scores.columns:
+                    mean = scores[col].mean()
+                    std = scores[col].std()
+                    final_scores.append(f"{mean:.3f}+-{std:.3f}")
+                results.loc[repr] = final_scores
+                logger.info(f"=== {repr}_final_scores ===")
+                for metric, score in zip(metrics, final_scores):
+                    logger.info(f"test_{metric}: {score}")
     
     params.to_csv(os.path.join(cfg["outdir"], "parameters.csv"))
     results.to_csv(os.path.join(cfg["outdir"], "results.csv"))
