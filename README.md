@@ -18,6 +18,7 @@ Please contact tadahaya[at]gmail.com before publishing your paper using the cont
     - [Therapeutics Data Commons](https://doi.org/10.48550/arXiv.2102.09548)
 - inspired by
     - [KAN: Kolmogorov-Arnold Networks](https://doi.org/10.48550/arXiv.1703.00564) ([GitHub](https://github.com/KindXiaoming/pykan))
+    - [FourierKAN](https://github.com/GistNoesis/FourierKAN)
 
 ## Contact
 If you have any questions or comments, please feel free to create an issue on github here, or email us:  
