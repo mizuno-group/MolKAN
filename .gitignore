@@ -127,3 +127,16 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# model checkpoint
+*.pt
+*.pth
+
+# private experiments results
+**/results_and_logs/
+
+# private HPC scripts
+**/miyabi/
+**/wisteria/
+*.err
+*.out
