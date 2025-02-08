@@ -100,13 +100,13 @@ class NaiveFourierKANLayer(th.nn.Module):
         return y
 
 class FourierKAN_Predictor(nn.Module):
-    def __init__(self, width:list, mode, num_grids, dropout=0):
+    def __init__(self, width:list, mode, num_grids, dropout=0, smooth_initialization=False):
         super().__init__()
         self.width = width
         self.num_grids = num_grids
         self.mode = mode
         num_layers = len(self.width) - 1
-        layers = [NaiveFourierKANLayer(inputdim, outdim, self.num_grids, addbias=True, smooth_initialization=False)
+        layers = [NaiveFourierKANLayer(inputdim, outdim, self.num_grids, addbias=True, smooth_initialization=smooth_initialization)
                                                 for inputdim, outdim in zip(width[:-1], width[1:])]
         for i in range(num_layers-1):
             layers.insert(i*2+1, nn.Dropout(dropout))
