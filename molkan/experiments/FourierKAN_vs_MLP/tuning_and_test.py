@@ -21,7 +21,7 @@ from src import utils
 from src import data_handler as dh
 from src.tuning import KAN_Tuner, MLP_Tuner
 """ === change based on the model you want to use === """
-from src.models import *
+from src.layers import *
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--datasets", type=str, help="datasets name you want to use")

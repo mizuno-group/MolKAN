@@ -4,7 +4,7 @@ import pandas as pd
 import torch
 from schedulefree import RAdamScheduleFree
 from tqdm import tqdm
-from src.models import *
+from src.layers import *
 import src.utils as utils
 import src.data_handler as dh
 from src.trainer import Trainer
@@ -80,7 +80,7 @@ class KAN_Tuner:
             validloader = dh.prep_dataloader(self.valid_ds, batch_size, shuffle=True, num_workers=8, pin_memory=True)
 
             # prepare model, optimizer, loss_func
-            model = FourierKAN_Predictor([512, hidden_layer_dim, self.outdim], mode=self.mode, num_grids=num_grids, dropout=dropout)
+            model = FourierKAN_Layer([512, hidden_layer_dim, self.outdim], mode=self.mode, num_grids=num_grids, dropout=dropout)
             model = model.to(self.device)
             optimizer = RAdamScheduleFree(params=model.parameters(), lr=learning_rate, weight_decay=0)
             if self.mode == "classification":
@@ -152,7 +152,7 @@ class KAN_Tuner:
         # prepare testloader
         testloader = dh.prep_dataloader(self.test_ds, best_params["batch_size"], shuffle=True, num_workers=8, pin_memory=True)
         # prepare model
-        model = FourierKAN_Predictor([512, best_params["hidden_layer_dim"], self.outdim],self.mode, best_params["num_grids"], best_params["dropout"])
+        model = FourierKAN_Layer([512, best_params["hidden_layer_dim"], self.outdim],self.mode, best_params["num_grids"], best_params["dropout"])
         model.load_state_dict(torch.load(os.path.join(self.outdir, "models", f"{self.note}_best_model.pt")))
         model = model.to(self.device)
         # test
@@ -227,7 +227,7 @@ class MLP_Tuner:
             validloader = dh.prep_dataloader(self.valid_ds, batch_size, shuffle=True, num_workers=8, pin_memory=True)
 
             # prepare model, optimizer, loss_func
-            model = MLP_predictor([512, hidden_layer_dim, self.outdim], mode=self.mode, dropout=dropout)
+            model = MLP_Layer([512, hidden_layer_dim, self.outdim], mode=self.mode, dropout=dropout)
             model = model.to(self.device)
             optimizer = RAdamScheduleFree(model.parameters(), lr=learning_rate, weight_decay=0)
             if self.mode == "classification":
@@ -276,7 +276,7 @@ class MLP_Tuner:
         # prepare testloader
         testloader = dh.prep_dataloader(self.test_ds, best_params["batch_size"], shuffle=True, num_workers=8, pin_memory=True)
         # prepare model
-        model = MLP_predictor([512, best_params["hidden_layer_dim"], self.outdim],self.mode, best_params["dropout"])
+        model = MLP_Layer([512, best_params["hidden_layer_dim"], self.outdim],self.mode, best_params["dropout"])
         model.load_state_dict(torch.load(os.path.join(self.outdir, "models", f"{self.note}_best_model.pt")))
         model = model.to(self.device)
         # test
