@@ -12,7 +12,7 @@ from kan import KAN
 from fastkan import FastKAN
 
 
-class KAN_predictor(nn.Module):
+class KAN_Layer(nn.Module):
     def __init__(self, width:list, mode, grid=20, k=3):
         super().__init__()
         self.width = width
@@ -27,7 +27,7 @@ class KAN_predictor(nn.Module):
             x = layer(x)
         return x
 
-class FastKAN_predictor(nn.Module):
+class FastKAN_Layer(nn.Module):
     def __init__(self, width:list, mode, grid_min, grid_max, num_grids):
         super().__init__()
         self.width = width
@@ -43,9 +43,9 @@ class FastKAN_predictor(nn.Module):
         return x
 
 # develop based on https://github.com/GistNoesis/FourierKAN.git
-class NaiveFourierKANLayer(th.nn.Module):
+class _NaiveFourierKANLayer(th.nn.Module):
     def __init__( self, inputdim, outdim, gridsize, addbias=True, smooth_initialization=False):
-        super(NaiveFourierKANLayer,self).__init__()
+        super(_NaiveFourierKANLayer,self).__init__()
         self.gridsize= gridsize
         self.addbias = addbias
         self.inputdim = inputdim
@@ -99,14 +99,14 @@ class NaiveFourierKANLayer(th.nn.Module):
         y = th.reshape( y, outshape)
         return y
 
-class FourierKAN_Predictor(nn.Module):
-    def __init__(self, width:list, mode, num_grids, dropout=0):
+class FourierKAN_Layer(nn.Module):
+    def __init__(self, width:list, mode, num_grids, dropout=0, smooth_initialization=False):
         super().__init__()
         self.width = width
         self.num_grids = num_grids
         self.mode = mode
         num_layers = len(self.width) - 1
-        layers = [NaiveFourierKANLayer(inputdim, outdim, self.num_grids, addbias=True, smooth_initialization=False)
+        layers = [_NaiveFourierKANLayer(inputdim, outdim, self.num_grids, addbias=True, smooth_initialization=smooth_initialization)
                                                 for inputdim, outdim in zip(width[:-1], width[1:])]
         for i in range(num_layers-1):
             layers.insert(i*2+1, nn.Dropout(dropout))
@@ -120,7 +120,7 @@ class FourierKAN_Predictor(nn.Module):
         return x
 
 
-class MLP_predictor(nn.Module):
+class MLP_Layer(nn.Module):
     def __init__(self, width:list, mode, dropout=0):
         super().__init__()
         self.width = width
