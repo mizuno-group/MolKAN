@@ -91,3 +91,18 @@ def _prep_feats(smiles, use_chirality=True):
         bond_index_tensor = torch.tensor(bond_index_list, dtype=torch.long).t().contiguous()
         bond_features_tensor = torch.stack(bond_features_list)
         return atom_features_tensor, bond_index_tensor, bond_features_tensor
+
+class AttentiveFPDatasets(torch.utils.data.Dataset):
+    def __init__(self, smiles_list, labels, use_chirality=True):
+        self.smiles_list = smiles_list
+        self.labels = labels
+        self.use_chirality = use_chirality
+
+    def __len__(self):
+        return len(self.smiles_list)
+
+    def __getitem__(self, idx):
+        smiles = self.smiles_list[idx]
+        labels = self.labels[idx]
+        atom_features, bond_index, bond_features = _prep_feats(smiles, self.use_chirality)
+        return atom_features, bond_index, bond_features, labels
