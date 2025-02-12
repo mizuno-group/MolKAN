@@ -18,7 +18,7 @@ class KAN_Layer(nn.Module):
         self.width = width
         self.mode = mode
         layers = [KAN(width=self.width, grid=grid, k=k, auto_save=False)]
-        if self.mode == "classification":
+        if self.mode == "c":
             layers.append(nn.Sigmoid())
         self.kan = nn.ModuleList(layers)
 
@@ -33,7 +33,7 @@ class FastKAN_Layer(nn.Module):
         self.width = width
         self.mode = mode
         layers = [FastKAN(width, grid_min=grid_min, grid_max=grid_max, num_grids=num_grids)]
-        if self.mode == "classification":
+        if self.mode == "c":
             layers.append(nn.Sigmoid())
         self.kan = nn.ModuleList(layers)
     
@@ -110,7 +110,7 @@ class FourierKAN_Layer(nn.Module):
                                                 for inputdim, outdim in zip(width[:-1], width[1:])]
         for i in range(num_layers-1):
             layers.insert(i*2+1, nn.Dropout(dropout))
-        if self.mode == "classification":
+        if self.mode == "c":
             layers.append(nn.Sigmoid())
         self.kan = nn.ModuleList(layers)
     
@@ -131,7 +131,7 @@ class MLP_Layer(nn.Module):
             layers.insert(i*2+1, nn.SiLU())
         for i in range(num_layers-1):
             layers.insert(i*3+2, nn.Dropout(dropout))
-        if self.mode == "classification":
+        if self.mode == "c":
             layers.append(nn.Sigmoid())
         self.mlp = nn.ModuleList(layers)
     
