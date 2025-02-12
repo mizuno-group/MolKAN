@@ -21,7 +21,7 @@ from torch_geometric.nn import GATConv, MessagePassing, global_add_pool
 from torch_geometric.nn.inits import glorot, zeros
 from torch_geometric.typing import Adj, OptTensor
 from torch_geometric.utils import softmax
-from ..layers import FourierKAN_Layer
+from ..layers import FourierKAN_Layer, MLP_Layer
 
 
 class GATEConv(MessagePassing):
@@ -95,6 +95,9 @@ class AttentiveFP(torch.nn.Module):
         num_timesteps (int): Number of iterative refinement steps for global
             readout.
         dropout (float, optional): Dropout probability. (default: :obj:`0.0`)
+        use_KAN_embed (bool, optional): Whether to use FourierKAN layers for atom embedding. (default: :obj:`False`)
+        use_KAN_predictor (bool, optional): Whether to use FourierKAN layers for prediction. (default: :obj:`False`)
+        num_grids (None|int, optional): Number of grids for FourierKAN layers. (default: :obj:`None`)
 
     """
     def __init__(
@@ -107,6 +110,9 @@ class AttentiveFP(torch.nn.Module):
         num_layers: int,
         num_timesteps: int,
         dropout: float = 0.0,
+        use_KAN_embed: bool = False,
+        use_KAN_predictor: bool = False,
+        num_grids: None|int = None
     ):
         super().__init__()
 
@@ -118,8 +124,14 @@ class AttentiveFP(torch.nn.Module):
         self.num_layers = num_layers
         self.num_timesteps = num_timesteps
         self.dropout = dropout
+        self.use_KAN_embed = use_KAN_embed
+        self.use_KAN_readout = use_KAN_predictor
+        self.num_grids = num_grids
 
-        self.lin1 = Linear(in_channels, hidden_channels)
+        if use_KAN_embed:
+            self.embed = FourierKAN_Layer([in_channels, hidden_channels], mode="r", num_grids=num_grids, smooth_initialization=True)
+        else:
+            self.embed = MLP_Layer([in_channels, hidden_channels], mode="r")
 
         self.gate_conv = GATEConv(hidden_channels, hidden_channels, edge_dim,
                                   dropout)
@@ -139,13 +151,16 @@ class AttentiveFP(torch.nn.Module):
         self.mol_conv.explain = False  # Cannot explain global pooling.
         self.mol_gru = GRUCell(hidden_channels, hidden_channels)
 
-        self.lin2 = Linear(hidden_channels, out_channels)
+        if use_KAN_predictor:
+            self.predictor = FourierKAN_Layer([hidden_channels, out_channels], mode=mode, num_grids=num_grids, smooth_initialization=True)
+        else:
+            self.predictor = MLP_Layer([hidden_channels, out_channels], mode=mode)
 
         self.reset_parameters()
 
     def reset_parameters(self):
         r"""Resets all learnable parameters of the module."""
-        self.lin1.reset_parameters()
+        self.embed.reset_parameters()
         self.gate_conv.reset_parameters()
         self.gru.reset_parameters()
         for conv, gru in zip(self.atom_convs, self.atom_grus):
@@ -153,13 +168,13 @@ class AttentiveFP(torch.nn.Module):
             gru.reset_parameters()
         self.mol_conv.reset_parameters()
         self.mol_gru.reset_parameters()
-        self.lin2.reset_parameters()
+        self.predictor.reset_parameters()
 
     def forward(self, x: Tensor, edge_index: Tensor, edge_attr: Tensor,
                 batch: Tensor) -> Tensor:
         """"""  # noqa: D419
         # Atom Embedding:
-        x = F.leaky_relu_(self.lin1(x))
+        x = F.leaky_relu_(self.embed(x))
 
         h = F.elu_(self.gate_conv(x, edge_index, edge_attr))
         h = F.dropout(h, p=self.dropout, training=self.training)
@@ -183,12 +198,8 @@ class AttentiveFP(torch.nn.Module):
 
         # Predictor:
         out = F.dropout(out, p=self.dropout, training=self.training)
-        if self.mode == "r":
-            return self.lin2(out)
-        elif self.mode == "c":
-            return F.sigmoid(self.lin2(out))
-        else:
-            raise ValueError("check your model prediction mode. c(lassification) or r(egression) ?")
+        out = self.predictor(out)
+        return out
 
     def __repr__(self) -> str:
         return (f'{self.__class__.__name__}('
