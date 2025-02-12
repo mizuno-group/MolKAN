@@ -1,11 +1,13 @@
 """
-created on Feb 11 2025
+Created by Zehao Li (Takuho Ri)
+Created on 2025-02-11 (Tue)  16:45:06 (+09:00)
 
-Featurizer for the AttentiveFP model
+Featurizer for AttentiveFP model
 
-This featurizer is based on the original paper and the implementations from the authors
+This script is based on the original paper and the implementations from the authors and PyTorch Geometric library.
 [1] Xiong, Zhaoping, Dingyan Wang, Xiaohong Liu, Feisheng Zhong, Xiaozhe Wan, Xutong Li, Zhaojun Li, et al. 2020. “Pushing the Boundaries of Molecular Representation for Drug Discovery with the Graph Attention Mechanism.” Journal of Medicinal Chemistry 63 (16): 8749–60.
-- httpd://github.com/OpenDrugAI/AttentiveFP
+- https://github.com/OpenDrugAI/AttentiveFP
+- https://github.com/pyg-team/pytorch_geometric
 """
 
 from rdkit.Chem import MolFromSmiles
@@ -84,25 +86,10 @@ def _prep_feats(smiles, use_chirality=True):
     for bond in mol.GetBonds():
         bond_index_list.append([bond.GetBeginAtomIdx(), bond.GetEndAtomIdx()])
         bond_index_list.append([bond.GetEndAtomIdx(), bond.GetBeginAtomIdx()])
-        bond_features_list.append([_bond_features(bond), _bond_features(bond)])
+        bond_features_list += [_bond_features(bond), _bond_features(bond)]
     if len(bond_index_list) == 0:
         return atom_features_tensor, torch.zeros((2, 0), dtype=torch.long), torch.zerops((0, 10), dtype=torch.float)
     else:
         bond_index_tensor = torch.tensor(bond_index_list, dtype=torch.long).t().contiguous()
         bond_features_tensor = torch.stack(bond_features_list)
         return atom_features_tensor, bond_index_tensor, bond_features_tensor
-
-class AttentiveFPDatasets(torch.utils.data.Dataset):
-    def __init__(self, smiles_list, labels, use_chirality=True):
-        self.smiles_list = smiles_list
-        self.labels = labels
-        self.use_chirality = use_chirality
-
-    def __len__(self):
-        return len(self.smiles_list)
-
-    def __getitem__(self, idx):
-        smiles = self.smiles_list[idx]
-        labels = self.labels[idx]
-        atom_features, bond_index, bond_features = _prep_feats(smiles, self.use_chirality)
-        return atom_features, bond_index, bond_features, labels

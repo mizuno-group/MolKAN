@@ -1,9 +1,10 @@
 """
-created on Feb 10 2025
+Created by Zehao Li (Takuho Ri)
+Created on 2025-02-11 (Tue)  16:45:32 (+09:00)
 
 AttentiveFP model with MLP layers and FourierKAN layers
 
-This model is based on the original paper and the implementations from the authors of the paper and the PyTorch Geometric library.
+This script is based on the original paper and the implementations from the authors of the paper and PyTorch Geometric library.
 [1] Xiong, Zhaoping, Dingyan Wang, Xiaohong Liu, Feisheng Zhong, Xiaozhe Wan, Xutong Li, Zhaojun Li, et al. 2020. “Pushing the Boundaries of Molecular Representation for Drug Discovery with the Graph Attention Mechanism.” Journal of Medicinal Chemistry 63 (16): 8749–60.
 - https://github.com/OpenDrugAI/AttentiveFP
 - https://github.com/pyg-team/pytorch_geometric
@@ -85,6 +86,7 @@ class AttentiveFP(torch.nn.Module):
     graph attention mechanisms.
 
     Args:
+        mode(str): prediction mode. c(lassification) or r(egression).
         in_channels (int): Size of each input sample.
         hidden_channels (int): Hidden node feature dimensionality.
         out_channels (int): Size of each output sample.
@@ -97,6 +99,7 @@ class AttentiveFP(torch.nn.Module):
     """
     def __init__(
         self,
+        mode: str,
         in_channels: int,
         hidden_channels: int,
         out_channels: int,
@@ -107,6 +110,7 @@ class AttentiveFP(torch.nn.Module):
     ):
         super().__init__()
 
+        self.mode = mode
         self.in_channels = in_channels
         self.hidden_channels = hidden_channels
         self.out_channels = out_channels
@@ -179,7 +183,12 @@ class AttentiveFP(torch.nn.Module):
 
         # Predictor:
         out = F.dropout(out, p=self.dropout, training=self.training)
-        return self.lin2(out)
+        if self.mode == "r":
+            return self.lin2(out)
+        elif self.mode == "c":
+            return F.sigmoid(self.lin2(out))
+        else:
+            raise ValueError("check your model prediction mode. c(lassification) or r(egression) ?")
 
     def __repr__(self) -> str:
         return (f'{self.__class__.__name__}('
