@@ -79,8 +79,8 @@ def split_dataset(dataset, stratify:bool, split_ratio=[0.8, 0.1, 0.1], seed=42, 
 def prep_AttentiveFPDataLoader(datasets, batch_size, shuffle=True, num_workers=8, pin_memory=True):
     return DataLoader(datasets, batch_size, shuffle, num_workers=num_workers, pin_memory=pin_memory)
 
-def prep_threeAttentiveFPDataLoader(train_sets, valid_sets, test_sets, batch_size, shuffle=True, num_workers=8, pin_memory=True):
-    tr = DataLoader(train_sets, batch_size, shuffle, num_workers=num_workers, pin_memory=pin_memory)
-    val = DataLoader(valid_sets, batch_size, shuffle, num_workers=num_workers, pin_memory=pin_memory)
-    test = DataLoader(test_sets, batch_size, shuffle, num_workers=num_workers, pin_memory=pin_memory)
+def prep_threeAttentiveFPDataLoader(train_set, valid_set, test_set, batch_size, shuffle=True, num_workers=8, pin_memory=True):
+    tr = DataLoader(train_set, batch_size, shuffle, num_workers=num_workers, pin_memory=pin_memory)
+    val = DataLoader(valid_set, batch_size, shuffle, num_workers=num_workers, pin_memory=pin_memory)
+    test = DataLoader(test_set, batch_size, shuffle, num_workers=num_workers, pin_memory=pin_memory)
     return tr, val, test
