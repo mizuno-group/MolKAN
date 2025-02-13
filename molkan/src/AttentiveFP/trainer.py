@@ -141,6 +141,7 @@ class AttentiveFP_Trainer():
         return test_scores
     
     def save_experiments(self, save_config=False):
+        self.logger.info("saving experiments...")
         if not save_config:
             outdir = os.path.join(self.outdir, "results_json")
             os.makedirs(outdir, exist_ok=True)
