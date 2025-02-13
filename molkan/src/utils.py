@@ -124,7 +124,7 @@ def fix_seed(seed:int=42, fix_gpu:bool=False):
 # Save and load experiments
 def save_experiment(
         outdir, config, model, train_losses, valid_losses,
-        valid_metrics, test_scores, classes, note=None, save_model=False
+        test_scores, classes=None, note=None, save_model=False, save_config=False
         ):
     """
     save the experiment: config, model, metrics, and progress plot
@@ -135,23 +135,22 @@ def save_experiment(
         model (nn.Module): model to be saved
         train_losses (list): training losses
         valid_losses (list): valid losses
-        valid_metrics (dict): valid_metrics
         test_scores (dict): test_scores
         classes (dict): dictionary of class names
         note (str): short note for this running if any
     
     """
     # save config
-    configfile = os.path.join(outdir, 'config.json')
-    with open(configfile, 'w') as f:
-        json.dump(config, f, sort_keys=True, indent=4)
+    if save_config:
+        configfile = os.path.join(outdir, f'config_{note}.json')
+        with open(configfile, 'w') as f:
+            json.dump(config, f, sort_keys=True, indent=4)
     # save metrics
-    jsonfile = os.path.join(outdir, 'loss_metrics.json')
+    jsonfile = os.path.join(outdir, f'loss_scores_{note}.json')
     with open(jsonfile, 'w') as f:
         data = {
             'train_losses': train_losses,
             'valid_losses': valid_losses,
-            'valid_metrics': valid_metrics,
             'test_scores': test_scores,
             'classes': classes,
         }
@@ -175,9 +174,9 @@ def save_checkpoint(model, outdir, note):
     model_dir = os.path.join(outdir, 'models')
     os.makedirs(model_dir, exist_ok=True)
     if note is None:
-        cpfile = os.path.join(model_dir, f"models_best.pt")
+        cpfile = os.path.join(model_dir, f"models.pt")
     else:
-        cpfile = os.path.join(model_dir, f"model_best_{note}.pt")
+        cpfile = os.path.join(model_dir, f"models_{note}.pt")
     torch.save(model.state_dict(), cpfile)
 
 
