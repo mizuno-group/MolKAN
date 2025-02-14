@@ -46,25 +46,23 @@ if __name__ == "__main__":
     fix_seed(config.seed, fix_gpu=True)
     # prepare data
     logger.info("Preparing data...")
-    df = pd.read_csv(os.path.join(project_path, "data", "tox_csv", "bace.csv"), index_col=0)
-    smiles = np.array(df["cano_smi"])
-    y = np.array(df["Class"])
-    datasets = AttentiveFPDatasets(smiles, y, use_chirality=True)
+    with open(os.path.join(project_path, "data", "AttentiveFP_graphs", "bace_c.pkl"), "rb") as f:
+        graphs = pickle.load(f)
+    datasets = AttentiveFPDatasets(graphs)
     trainset, validset, testset = split_dataset(datasets, stratify=True, seed=config.seed)
     logger.info(f"train: {len(trainset)}, valid: {len(validset)}, test: {len(testset)}")
     trainloader, validloader, testloader = prep_threeAttentiveFPDataLoader(trainset, validset, testset, batch_size=32, shuffle=True, num_workers=8, pin_memory=True)
 
     # Grid Search
-    trainloss_dict = {}
-    validloss_dict = {}
-    testscores_dict = {}
-
     lrs = [1.0e-2, 1.0e-3, 1.0e-4, 1.0e-5]
     grids = [1, 2, 4, 8]
 
     # Grid Search
     for use_KAN_predictor in [False, True]:
         for use_KAN_embed in [False, True]:
+            trainloss_dict = {}
+            validloss_dict = {}
+            testscores_dict = {}
             for lr in lrs:
                 if use_KAN_predictor or use_KAN_embed:
                     for num_grids in grids:
@@ -109,12 +107,12 @@ if __name__ == "__main__":
                 fig.suptitle(f"Grid Search for use_KAN_predictor_{use_KAN_predictor}_use_KAN_embed_{use_KAN_embed}", fontsize=24)
                 epoch = list(range(1, config.epoch+1))
                 for i, (key, value) in enumerate(trainloss_dict.items()):
-                    ax[i//4, i%4].plot(epoch, value, label="train loss")
-                    ax[i//4, i%4].plot(epoch, validloss_dict[key], label="valid loss")
-                    ax[i//4, i%4].set_title(f"{key} - testAUROC:{testscores_dict[key]["AUROC"]:.3f}")
-                    ax[i//4, i%4].set_xlabel("epoch")
-                    ax[i//4, i%4].set_ylabel("loss")
-                    ax[i//4, i%4].legend()
+                    ax[i%4, i//4].plot(epoch, value, label="train loss")
+                    ax[i%4, i//4].plot(epoch, validloss_dict[key], label="valid loss")
+                    ax[i%4, i//4].set_title(f"{key} - testAUROC:{testscores_dict[key]["AUROC"]:.3f}")
+                    ax[i%4, i//4].set_xlabel("epoch")
+                    ax[i%4, i//4].set_ylabel("loss")
+                    ax[i%4, i//4].legend()
                 plt.tight_layout()
                 fig.savefig(os.path.join(progress_dir, f"Grid_Search_use_KAN_predictor_{use_KAN_predictor}_use_KAN_embed_{use_KAN_embed}.png"))
                 plt.close()
