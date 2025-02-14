@@ -14,10 +14,10 @@ from .featurizer import _prep_feats
 
 
 class AttentiveFPDatasets(Dataset):
-    def __init__(self, graphs, labels, use_chirality=True):
+    def __init__(self, graphs):
         super().__init__()
         self.graphs = graphs
-        self.labels = labels
+        self.labels = list(data.y for data in graphs)
 
     def __len__(self):
         return len(self.graphs)
@@ -33,7 +33,6 @@ class SubsetWrapper(Dataset):
         # take over attributes
         self.graphs = [self.dataset.graphs[i] for i in indices]
         self.labels = [self.dataset.labels[i] for i in indices]
-        self.use_chirality = self.dataset.use_chirality
     
     def __len__(self):
         return len(self.indices)
