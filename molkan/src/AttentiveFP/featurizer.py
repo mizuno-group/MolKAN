@@ -37,7 +37,7 @@ def _atom_features(atom, explicit_H=False, use_chirality=True):
     hybridization_sets = [Chem.rdchem.HybridizationType.SP, Chem.rdchem.HybridizationType.SP2, Chem.rdchem.HybridizationType.SP3, 
                           Chem.rdchem.HybridizationType.SP3D, Chem.rdchem.HybridizationType.SP3D2, "other"]
     atom_feats = one_of_k_encoding_unk(atom.GetSymbol(), atom_sets) + \
-                          one_of_k_encoding(atom.GetDegree(), [0, 1, 2, 3, 4, 5]) + \
+                          one_of_k_encoding(atom.GetDegree(), [0, 1, 2, 3, 4, 5, 6]) + \
                           [atom.GetFormalCharge(), atom.GetNumRadicalElectrons()] + \
                           one_of_k_encoding_unk(atom.GetHybridization(), hybridization_sets) + \
                           [atom.GetIsAromatic()]
@@ -88,7 +88,7 @@ def _prep_feats(smiles, use_chirality=True):
         bond_index_list.append([bond.GetEndAtomIdx(), bond.GetBeginAtomIdx()])
         bond_features_list += [_bond_features(bond), _bond_features(bond)]
     if len(bond_index_list) == 0:
-        return atom_features_tensor, torch.zeros((2, 0), dtype=torch.long), torch.zerops((0, 10), dtype=torch.float)
+        return atom_features_tensor, torch.zeros((2, 0), dtype=torch.long), torch.zeros((0, 10), dtype=torch.float)
     else:
         bond_index_tensor = torch.tensor(bond_index_list, dtype=torch.long).t().contiguous()
         bond_features_tensor = torch.stack(bond_features_list)

@@ -95,7 +95,7 @@ class AttentiveFP_Trainer():
         self.logger = logger
 
         fix_seed(self.seed, fix_gpu=True)
-        self.model = AttentiveFP(self.mode, 39, self.hidden_dim, self.out_dim, 10, self.num_layers, self.num_timesteps, 
+        self.model = AttentiveFP(self.mode, 40, self.hidden_dim, self.out_dim, 10, self.num_layers, self.num_timesteps, 
                                  dropout=self.dropout, use_KAN_embed=self.use_KAN_embed, use_KAN_predictor=self.use_KAN_predictor, num_grids=self.num_grids).to(self.device)
         self.optimizer = RAdamScheduleFree(self.model.parameters(), self.lr, weight_decay=self.weight_decay)
         if self.mode == "c":
