@@ -17,7 +17,7 @@ class AttentiveFPDatasets(Dataset):
     def __init__(self, graphs):
         super().__init__()
         self.graphs = graphs
-        self.labels = list(data.y for data in graphs)
+        self.labels = list(data.y.squeeze(0) for data in graphs)
 
     def __len__(self):
         return len(self.graphs)
