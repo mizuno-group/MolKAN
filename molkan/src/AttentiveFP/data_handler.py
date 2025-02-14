@@ -14,22 +14,16 @@ from .featurizer import _prep_feats
 
 
 class AttentiveFPDatasets(Dataset):
-    def __init__(self, smiles_list, labels, use_chirality=True):
+    def __init__(self, graphs, labels, use_chirality=True):
         super().__init__()
-        self.smiles_list = smiles_list
+        self.graphs = graphs
         self.labels = labels
-        self.use_chirality = use_chirality
 
     def __len__(self):
-        return len(self.smiles_list)
+        return len(self.graphs)
 
     def __getitem__(self, idx):
-        x = np.array(self.smiles_list)[idx]
-        atom_feats, edge_idx, edge_feats = _prep_feats(x)
-        y = np.array(self.labels)[idx]
-        y = torch.tensor(y).float().view(-1, 1)
-        data = Data(atom_feats, edge_idx, edge_feats, y)
-        return data
+        return self.graphs[idx]
 
 class SubsetWrapper(Dataset):
     def __init__(self, dataset, indices):
@@ -37,7 +31,7 @@ class SubsetWrapper(Dataset):
         self.dataset = dataset
         self.indices = indices
         # take over attributes
-        self.smiles_list = [self.dataset.smiles_list[i] for i in indices]
+        self.graphs = [self.dataset.graphs[i] for i in indices]
         self.labels = [self.dataset.labels[i] for i in indices]
         self.use_chirality = self.dataset.use_chirality
     
