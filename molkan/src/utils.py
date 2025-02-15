@@ -132,8 +132,8 @@ def count_param(model):
             return f"{num / 1e3:.3f}K"
         else:
             return str(num)
-    total_params = sum(p.numel() for p in model.parameters())
-    trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    total_params = format_params(sum(p.numel() for p in model.parameters()))
+    trainable_params = format_params(sum(p.numel() for p in model.parameters() if p.requires_grad))
     return total_params, trainable_params
 
 # Save and load experiments
