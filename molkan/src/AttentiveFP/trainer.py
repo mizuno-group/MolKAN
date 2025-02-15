@@ -10,7 +10,7 @@ from tqdm import tqdm
 from schedulefree import RAdamScheduleFree
 
 from .model import AttentiveFP
-from ..utils import fix_seed, save_experiment, save_checkpoint, BCELoss, MSE, Metrics
+from ..utils import fix_seed, count_param, save_experiment, save_checkpoint, BCELoss, MSE, Metrics
 
 def _train_epoch(model, optimizer, loss_func, trainloader, device):
     model.train()
@@ -97,6 +97,9 @@ class AttentiveFP_Trainer():
         fix_seed(self.seed, fix_gpu=True)
         self.model = AttentiveFP(self.mode, 40, self.hidden_dim, self.out_dim, 10, self.num_layers, self.num_timesteps, 
                                  dropout=self.dropout, use_KAN_embed=self.use_KAN_embed, use_KAN_predictor=self.use_KAN_predictor, num_grids=self.num_grids).to(self.device)
+        total_params, trainable_params = count_param(self.model)
+        self.logger.info(f"Total parameters: {total_params}")
+        self.logger.info(f"Trainable parameters: {trainable_params}")
         self.optimizer = RAdamScheduleFree(self.model.parameters(), self.lr, weight_decay=self.weight_decay)
         if self.mode == "c":
             self.loss_func = BCELoss()
