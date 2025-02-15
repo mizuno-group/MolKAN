@@ -121,6 +121,21 @@ def fix_seed(seed:int=42, fix_gpu:bool=False):
         torch.backends.cudnn.benchmark = False
         torch.backends.cudnn.deterministic = True
 
+# Count parameters num
+def count_param(model):
+    def format_params(num):
+        if num >= 1e9:
+            return f"{num / 1e9:.3f}B"
+        elif num >= 1e6:
+            return f"{num / 1e6:.3f}M"
+        elif num >= 1e3:
+            return f"{num / 1e3:.3f}K"
+        else:
+            return str(num)
+    total_params = sum(p.numel() for p in model.parameters())
+    trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    return total_params, trainable_params
+
 # Save and load experiments
 def save_experiment(
         outdir, config, model, train_losses, valid_losses,
