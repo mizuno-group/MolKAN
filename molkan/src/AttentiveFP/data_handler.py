@@ -28,18 +28,16 @@ class AttentiveFPDatasets(Dataset):
 class SubsetWrapper(Dataset):
     def __init__(self, dataset, indices):
         super().__init__()
-        self.dataset = dataset
         self.indices = indices
         # take over attributes
-        self.graphs = [self.dataset.graphs[i] for i in indices]
-        self.labels = [self.dataset.labels[i] for i in indices]
+        self.graphs = [dataset.graphs[i] for i in indices]
+        self.labels = [dataset.labels[i] for i in indices]
     
     def __len__(self):
         return len(self.indices)
     
     def __getitem__(self, idx):
-        actual_idx = self.indices[idx]
-        return self.dataset[actual_idx]
+        return self.graphs[idx]
 
 
 def split_dataset(dataset, stratify:bool, split_ratio=[0.8, 0.1, 0.1], seed=42, shuffle=True):
@@ -56,7 +54,7 @@ def split_dataset(dataset, stratify:bool, split_ratio=[0.8, 0.1, 0.1], seed=42, 
     valid_test_set = SubsetWrapper(dataset, valid_test_idx)
     
     test_ratio = split_ratio[2] * (1 / valid_test_ratio)
-    valid_test_len = len(valid_test_set)
+    valid_test_len = len(valid_test_idx)
     valid_idx, test_idx = train_test_split(np.arange(valid_test_len),
                                            test_size=test_ratio,
                                            stratify=valid_test_set.labels if stratify else None,
