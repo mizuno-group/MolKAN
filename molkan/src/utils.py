@@ -138,7 +138,7 @@ def count_param(model):
 
 # Save and load experiments
 def save_experiment(
-        outdir, config, model, train_losses, valid_losses,
+        outdir, config, model, train_losses, train_briers, valid_losses, valid_briers, 
         test_scores, classes=None, note=None, save_model=False, save_config=False
         ):
     """
@@ -159,17 +159,19 @@ def save_experiment(
     if save_config:
         configfile = os.path.join(outdir, f'config_{note}.json')
         with open(configfile, 'w') as f:
-            json.dump(config, f, sort_keys=True, indent=4)
+            json.dump(config, f, sort_keys=False, indent=4)
     # save metrics
     jsonfile = os.path.join(outdir, f'loss_scores_{note}.json')
     with open(jsonfile, 'w') as f:
         data = {
             'train_losses': train_losses,
+            'train_briers': train_briers,
             'valid_losses': valid_losses,
+            'valid_briers': valid_briers,
             'test_scores': test_scores,
             'classes': classes,
         }
-        json.dump(data, f, sort_keys=True, indent=4)
+        json.dump(data, f, sort_keys=False, indent=4)
     # save the model
     if save_model:
         save_checkpoint(model, outdir, note=note)
