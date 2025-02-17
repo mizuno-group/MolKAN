@@ -291,9 +291,9 @@ class MSE():
         self.brier = brier
     def __call__(self, y_pred, y_true, weight):
         if self.brier:
-            return torch.sum(((y_pred- y_true) ** 2) * weight) / torch.sum(weight)
-        else:
             return torch.sum(((y_pred - y_true) ** 2) * weight)
+        else:
+            return torch.sum(((y_pred- y_true) ** 2) * weight) / torch.sum(weight)
     
 
 # Metrics functions
