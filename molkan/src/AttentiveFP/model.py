@@ -86,7 +86,6 @@ class AttentiveFP(torch.nn.Module):
     graph attention mechanisms.
 
     Args:
-        mode(str): prediction mode. c(lassification) or r(egression).
         in_channels (int): Size of each input sample.
         hidden_channels (int): Hidden node feature dimensionality.
         out_channels (int): Size of each output sample.
@@ -102,7 +101,6 @@ class AttentiveFP(torch.nn.Module):
     """
     def __init__(
         self,
-        mode: str,
         in_channels: int,
         hidden_channels: int,
         out_channels: int,
@@ -116,7 +114,6 @@ class AttentiveFP(torch.nn.Module):
     ):
         super().__init__()
 
-        self.mode = mode
         self.in_channels = in_channels
         self.hidden_channels = hidden_channels
         self.out_channels = out_channels
@@ -129,9 +126,9 @@ class AttentiveFP(torch.nn.Module):
         self.num_grids = num_grids
 
         if use_KAN_embed:
-            self.embed = FourierKAN_Layer([in_channels, hidden_channels], mode="r", num_grids=num_grids, smooth_initialization=True)
+            self.embed = FourierKAN_Layer([in_channels, hidden_channels], num_grids=num_grids, smooth_initialization=True)
         else:
-            self.embed = MLP_Layer([in_channels, hidden_channels], mode="r")
+            self.embed = MLP_Layer([in_channels, hidden_channels])
 
         self.gate_conv = GATEConv(hidden_channels, hidden_channels, edge_dim,
                                   dropout)
@@ -152,9 +149,9 @@ class AttentiveFP(torch.nn.Module):
         self.mol_gru = GRUCell(hidden_channels, hidden_channels)
 
         if use_KAN_predictor:
-            self.predictor = FourierKAN_Layer([hidden_channels, out_channels], mode=mode, num_grids=num_grids, smooth_initialization=True)
+            self.predictor = FourierKAN_Layer([hidden_channels, out_channels], num_grids=num_grids, smooth_initialization=True)
         else:
-            self.predictor = MLP_Layer([hidden_channels, out_channels], mode=mode)
+            self.predictor = MLP_Layer([hidden_channels, out_channels])
 
         self.reset_parameters()
 
