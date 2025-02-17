@@ -169,10 +169,19 @@ class AttentiveFP_Trainer():
         
         save_checkpoint(self.model, self.outdir, self.note)
         self.logger.info(f"=== train finished ===")
+        
 
         if self.use_brier:
+            self.train_losses = train_losses
+            self.train_briers = train_briers
+            self.valid_losses = valid_losses
+            self.valid_briers = valid_briers
             return train_losses, train_briers, valid_losses, valid_briers
         else:
+            self.train_losses = train_losses
+            self.train_briers = None
+            self.valid_losses = valid_losses
+            self.valid_briers = None
             return train_losses, valid_losses
 
     def test(self, testloader):
@@ -191,11 +200,11 @@ class AttentiveFP_Trainer():
         if not save_config:
             outdir = os.path.join(self.outdir, "results_json")
             os.makedirs(outdir, exist_ok=True)
-            save_experiment(outdir, vars(self.config), self.model, self.train_losses, self.valid_losses, self.test_scores, note=self.note, save_config=save_config)
+            save_experiment(outdir, vars(self.config), self.model, self.train_losses, self.train_briers, 
+                            self.valid_losses, self.valid_briers, self.test_scores, note=self.note, save_config=save_config)
         else:
-            save_experiment(outdir, vars(self.config), self.model, self.train_losses, self.valid_losses, self.test_scores, note= self.note, save_config=save_config)
-
-
+            save_experiment(outdir, vars(self.config), self.model, self.train_losses, self.train_briers, 
+                            self.valid_losses, self.valid_briers, self.test_scores, note= self.note, save_config=save_config)
         
         
 
