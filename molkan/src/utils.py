@@ -287,8 +287,10 @@ class BCELoss():
         return torch.nn.functional.binary_cross_entropy(y_pred, y_true, weight)
 
 class MSE():
-    def __call__(self, y_pred, y_true, weight, get_mean=True):
-        if get_mean:
+    def __init__(self, brier:bool=False):
+        self.brier = brier
+    def __call__(self, y_pred, y_true, weight):
+        if self.brier:
             return torch.sum(((y_pred- y_true) ** 2) * weight) / torch.sum(weight)
         else:
             return torch.sum(((y_pred - y_true) ** 2) * weight)
