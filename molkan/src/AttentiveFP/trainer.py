@@ -10,12 +10,15 @@ from tqdm import tqdm
 from schedulefree import RAdamScheduleFree
 
 from .model import AttentiveFP
-from ..utils import fix_seed, count_param, save_experiment, save_checkpoint, BCELoss, MSE, Metrics
+from ..utils import fix_seed, count_param, save_experiment, save_checkpoint, BCEWithLogitsLoss, MSE, Metrics
 
-def _train_epoch(model, optimizer, loss_func, trainloader, device):
+def _train_epoch(model, optimizer, loss_func, trainloader, device, brier:MSE|None=None):
     model.train()
     optimizer.train()
     total_loss = 0
+    if brier is not None:
+        brier_sum = 0
+        label_num = 0
     for data in trainloader:
         data = data.to(device)
         optimizer.zero_grad()
@@ -28,13 +31,25 @@ def _train_epoch(model, optimizer, loss_func, trainloader, device):
         loss.backward()
         optimizer.step()
         total_loss += loss.item() * data.num_graphs
-    return total_loss / len(trainloader.dataset)
 
-def _evaluate(model, optimizer, loss_func, validloader, device):
+        if brier is not None:
+            pred = torch.sigmoid(pred)
+            brier_sum += brier(pred, y, mask).item()
+            label_num += torch.sum(mask).item()
+    
+    if brier is None:
+        return total_loss / len(trainloader.dataset)
+    else:
+        return total_loss / len(trainloader.dataset), brier_sum / label_num
+
+def _evaluate(model, optimizer, loss_func, validloader, device, brier:MSE|None=None):
     with torch.no_grad():
         model.eval()
         optimizer.eval()
         total_loss = 0
+        if brier is not None:
+            brier_sum = 0
+            label_num = 0
         for data in validloader:
             data = data.to(device)
             pred = model(data.x, data.edge_index, data.edge_attr, data.batch)
@@ -44,11 +59,18 @@ def _evaluate(model, optimizer, loss_func, validloader, device):
 
             loss = loss_func(pred, y, mask)
             total_loss += loss.item() * data.num_graphs
+        
+            if brier is not None:
+                pred = torch.sigmoid(pred)
+                brier_sum += brier(pred, y, mask).item()
+                label_num += torch.sum(mask).item()
             
-        valid_loss = total_loss / len(validloader.dataset)
-    return valid_loss
+    if brier is None:
+        return total_loss / len(validloader.dataset)
+    else:
+        return total_loss / len(validloader.dataset), brier_sum / label_num
 
-def _test(model, testloader, metrics, device):
+def _test(model, mode, testloader, metrics, device):
     with torch.no_grad():
         model.eval()
         test_scores = {}
@@ -57,6 +79,8 @@ def _test(model, testloader, metrics, device):
         for data in testloader:
             data = data.to(device)
             pred = model(data.x, data.edge_index, data.edge_attr, data.batch)
+            if mode == "c":
+                pred = torch.sigmoid(pred)
             pred_list.append(pred.detach().cpu().numpy())
             y_list.append(data.y.detach().cpu().numpy())
         
@@ -92,18 +116,21 @@ class AttentiveFP_Trainer():
         self.seed = config.seed
         self.outdir = config.outdir
         self.note = config.note
+        self.use_brier = config.use_brier
         self.logger = logger
 
         fix_seed(self.seed, fix_gpu=True)
-        self.model = AttentiveFP(self.mode, 40, self.hidden_dim, self.out_dim, 10, self.num_layers, self.num_timesteps, 
+        self.model = AttentiveFP(40, self.hidden_dim, self.out_dim, 10, self.num_layers, self.num_timesteps, 
                                  dropout=self.dropout, use_KAN_embed=self.use_KAN_embed, use_KAN_predictor=self.use_KAN_predictor, num_grids=self.num_grids).to(self.device)
         total_params, trainable_params = count_param(self.model)
         self.logger.info(f"Total parameters: {total_params}")
         self.logger.info(f"Trainable parameters: {trainable_params}")
         self.optimizer = RAdamScheduleFree(self.model.parameters(), self.lr, weight_decay=self.weight_decay)
         if self.mode == "c":
-            self.loss_func = BCELoss()
+            self.loss_func = BCEWithLogitsLoss()
             self.metrics = ["accuracy", "AUROC", "sensitivity", "precision", "MCC"]
+            if self.use_brier:
+                self.brier = MSE(brier=True)
         else:
             self.loss_func = MSE()
             self.metrics = ["R2", "RMSE", "MAE"]
@@ -115,26 +142,42 @@ class AttentiveFP_Trainer():
         fix_seed(self.seed, fix_gpu=True)
         
         # train
-        train_losses = []
-        valid_losses = []
-        for e in pbar:
-            train_loss = _train_epoch(self.model, self.optimizer, self.loss_func, trainloader, self.device)
-            valid_loss = _evaluate(self.model, self.optimizer, self.loss_func, validloader, self.device)
-            train_losses.append(train_loss)
-            valid_losses.append(valid_loss)
-            pbar.set_description(f"epoch {e+1} | train loss: {train_loss:.3e} | valid loss: {valid_loss:.3e}")
-            self.logger.debug(f"epoch {e+1} | train loss: {train_loss:.3e} | valid loss: {valid_loss:.3e}")
+        if self.use_brier:
+            train_losses = []
+            train_briers = []
+            valid_losses = []
+            valid_briers = []
+            for e in pbar:
+                train_loss, train_brier = _train_epoch(self.model, self.optimizer, self.loss_func, trainloader, self.device, self.brier)
+                valid_loss, valid_brier = _evaluate(self.model, self.optimizer, self.loss_func, validloader, self.device, self.brier)
+                train_losses.append(train_loss)
+                train_briers.append(train_brier)
+                valid_losses.append(valid_loss)
+                valid_briers.append(valid_brier)
+                pbar.set_description(f"epoch {e+1} | train loss: {train_loss:.3e} | train brier: {train_brier:.3e} | valid loss: {valid_loss:.3e} | valid brier: {valid_brier:.3e}")
+                self.logger.debug(f"epoch {e+1} | train loss: {train_loss:.3e} | train brier: {train_brier:.3e} | valid loss: {valid_loss:.3e} | valid brier: {valid_brier:.3e}")
+        else:
+            train_losses = []
+            valid_losses = []
+            for e in pbar:
+                train_loss = _train_epoch(self.model, self.optimizer, self.loss_func, trainloader, self.device)
+                valid_loss = _evaluate(self.model, self.optimizer, self.loss_func, validloader, self.device)
+                train_losses.append(train_loss)
+                valid_losses.append(valid_loss)
+                pbar.set_description(f"epoch {e+1} | train loss: {train_loss:.3e} | valid loss: {valid_loss:.3e}")
+                self.logger.debug(f"epoch {e+1} | train loss: {train_loss:.3e} | valid loss: {valid_loss:.3e}")       
+        
         save_checkpoint(self.model, self.outdir, self.note)
         self.logger.info(f"=== train finished ===")
 
-        self.train_losses = train_losses
-        self.valid_losses = valid_losses
-
-        return train_losses, valid_losses
+        if self.use_brier:
+            return train_losses, train_briers, valid_losses, valid_briers
+        else:
+            return train_losses, valid_losses
 
     def test(self, testloader):
         self.logger.info(f"=== test start ===")
-        test_scores = _test(self.model, testloader, self.metrics, self.device)
+        test_scores = _test(self.model, self.mode, testloader, self.metrics, self.device)
         for k, v in test_scores.items():
             self.logger.info(f"{k}: {v:.4e}")
         self.logger.info(f"=== test finished ===")
