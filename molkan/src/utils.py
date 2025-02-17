@@ -278,13 +278,20 @@ def get_component_list(model, optimizer, loss_func, device, scheduler=None):
 
 
 # Loss
+class BCEWithLogitsLoss():
+    def __call__(self, y_pred, y_true, weight):
+        return torch.nn.functional.binary_cross_entropy_with_logits(y_pred, y_true, weight)
+
 class BCELoss():
     def __call__(self, y_pred, y_true, weight):
         return torch.nn.functional.binary_cross_entropy(y_pred, y_true, weight)
 
 class MSE():
-    def __call__(self, y_pred, y_true, weight):
-        return torch.sum(((y_pred- y_true) ** 2) * weight) / torch.sum(weight)
+    def __call__(self, y_pred, y_true, weight, get_mean=True):
+        if get_mean:
+            return torch.sum(((y_pred- y_true) ** 2) * weight) / torch.sum(weight)
+        else:
+            return torch.sum(((y_pred - y_true) ** 2) * weight)
     
 
 # Metrics functions
