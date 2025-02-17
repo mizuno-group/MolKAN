@@ -100,20 +100,15 @@ class _NaiveFourierKANLayer(th.nn.Module):
         return y
 
 class FourierKAN_Layer(nn.Module):
-    def __init__(self, width:list, mode, num_grids, dropout=0, smooth_initialization=False):
+    def __init__(self, width:list, num_grids, dropout=0, smooth_initialization=False):
         super().__init__()
         self.width = width
         self.num_grids = num_grids
-        if mode not in ['c', 'r']:
-            raise ValueError("prediction mode must be either 'c' or 'r', got {}".format(mode))
-        self.mode = mode
         num_layers = len(self.width) - 1
         layers = [_NaiveFourierKANLayer(inputdim, outdim, self.num_grids, addbias=True, smooth_initialization=smooth_initialization)
                                                 for inputdim, outdim in zip(width[:-1], width[1:])]
         for i in range(num_layers-1):
             layers.insert(i*2+1, nn.Dropout(dropout))
-        if self.mode == "c":
-            layers.append(nn.Sigmoid())
         self.kan = nn.ModuleList(layers)
     
     def reset_parameters(self):
@@ -130,20 +125,15 @@ class FourierKAN_Layer(nn.Module):
 
 
 class MLP_Layer(nn.Module):
-    def __init__(self, width:list, mode, dropout=0):
+    def __init__(self, width:list, dropout=0):
         super().__init__()
         self.width = width
-        if mode not in ['c', 'r']:
-            raise ValueError("prediction mode must be either 'c' or 'r', got {}".format(mode))
-        self.mode = mode
         num_layers = len(self.width) - 1
         layers = [nn.Linear(self.width[i], self.width[i+1]) for i in range(num_layers)]
         for i in range(num_layers-1):
             layers.insert(i*2+1, nn.SiLU())
         for i in range(num_layers-1):
             layers.insert(i*3+2, nn.Dropout(dropout))
-        if self.mode == "c":
-            layers.append(nn.Sigmoid())
         self.mlp = nn.ModuleList(layers)
     
     def reset_parameters(self):
