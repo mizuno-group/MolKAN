@@ -312,7 +312,7 @@ class Metrics:
             except:
                 auroc = np.nan
             auroc_list.append(auroc)
-        return np.nanmean(auroc_list)
+        return float(np.nanmean(auroc_list))
     
     @staticmethod
     def get_confusion_matrix(pred, y):
@@ -382,15 +382,15 @@ class Metrics:
 
     @staticmethod
     def R2(pred, y):
-        return r2_score(y, pred)
+        return float(r2_score(y, pred))
     
     @staticmethod
     def RMSE(pred, y):
-        return root_mean_squared_error(y, pred)
+        return float(root_mean_squared_error(y, pred))
     
     @staticmethod
     def MAE(pred, y):
-        return mean_absolute_error(y, pred)
+        return float(mean_absolute_error(y, pred))
 
 
 # for argparse input
