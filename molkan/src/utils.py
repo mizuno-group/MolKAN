@@ -18,7 +18,7 @@ from sklearn.metrics import roc_auc_score, r2_score, root_mean_squared_error, me
 
 
 # Initializing Logger
-def init_logger(outdir, level_console="info", level_file="debug"):
+def init_logger(outdir, filename="log.txt", level_console="info", level_file="debug"):
     
     level_dic = {
         "critical": logging.CRITICAL,
@@ -38,7 +38,7 @@ def init_logger(outdir, level_console="info", level_file="debug"):
         datefmt = "%Y%m%d-%H%M%S"
     )
 
-    fh = logging.FileHandler(filename=Path(outdir, "log.txt"))
+    fh = logging.FileHandler(filename=Path(outdir, filename))
     fh.setLevel(level_dic[level_file])
     fh.setFormatter(fmt)
 
@@ -193,7 +193,7 @@ def save_checkpoint(model, outdir, note):
     if note is None:
         cpfile = os.path.join(model_dir, f"models.pt")
     else:
-        cpfile = os.path.join(model_dir, f"models_{note}.pt")
+        cpfile = os.path.join(model_dir, f"{note}.pt")
     torch.save(model.state_dict(), cpfile)
 
 
@@ -253,14 +253,14 @@ def plot_experiments_results(
 
 
 # Timer related functions
-def timer(start_time):
+def timer(start_time, logger):
     """ Measure the elapsed time """
     elapsed_time = time.time() - start_time
     elapsed_hours = int(elapsed_time // 3600)  # hour
     elapsed_minutes = int((elapsed_time % 3600) // 60)  # min
     elapsed_seconds = int(elapsed_time % 60)  # sec
     res = f"{elapsed_hours:02}:{elapsed_minutes:02}:{elapsed_seconds:02}"
-    print(f"Elapsed Time: {res}")
+    logger.info(f"{res}")
     return res
 
 
