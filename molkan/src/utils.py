@@ -260,7 +260,7 @@ def timer(start_time, logger):
     elapsed_minutes = int((elapsed_time % 3600) // 60)  # min
     elapsed_seconds = int(elapsed_time % 60)  # sec
     res = f"{elapsed_hours:02}:{elapsed_minutes:02}:{elapsed_seconds:02}"
-    logger.info(f"{res}")
+    logger.info(f"elapsed time: {res}")
     return res
 
 
