@@ -184,8 +184,12 @@ class AttentiveFP_Trainer():
             self.valid_briers = None
             return train_losses, valid_losses
 
-    def test(self, testloader):
+    def test(self, testloader, param_dict=None):
         self.logger.info(f"=== test start ===")
+        if param_dict is not None:
+            self.model = AttentiveFP(40, self.hidden_dim, self.out_dim, 10, self.num_layers, self.num_timesteps, 
+                                dropout=self.dropout, use_KAN_embed=self.use_KAN_embed, use_KAN_predictor=self.use_KAN_predictor, num_grids=self.num_grids).to(self.device)
+            self.model.load_state_dict(torch.load(param_dict))
         test_scores = _test(self.model, self.mode, testloader, self.metrics, self.device)
         for k, v in test_scores.items():
             self.logger.info(f"{k}: {v:.4e}")
