@@ -59,8 +59,10 @@ if __name__ == "__main__":
     outdir = os.path.join(os.path.abspath(__file__).replace("experiments", "results_and_logs").replace(".py", ""), f"{args.dataset}")
     os.makedirs(outdir, exist_ok=True)
     os.makedirs(os.path.join(outdir, "log"), exist_ok=True) # log output dir
-    results_jsons = os.path.join(outdir, "results_jsons") # results json output dir
-    os.makedirs(results_jsons, exist_ok=True)
+    trials_dir = os.path.join(outdir, "trials") # trial progresses output dir
+    os.makedirs(trials_dir, exist_ok=True)
+    results_dir = os.path.join(outdir, "results") # test results output dir
+    os.makedirs(results_dir, exist_ok=True)
 
     # define config
     models=["MLP-MLP", "KAN-MLP", "MLP-KAN", "KAN-KAN"]
@@ -115,6 +117,9 @@ if __name__ == "__main__":
     else:
         logger.info(f"Total trials: {len(lrs)*len(hidden_dims)}")
 
+    # dict saving all trials
+    data = {}
+
     for lr in lrs:
         for h_dim in hidden_dims:
             if config.model != "MLP-MLP":
@@ -128,28 +133,25 @@ if __name__ == "__main__":
                     trainer = AttentiveFP_Trainer(config, logger)
                     if config.use_brier:
                         train_losses, train_briers, valid_losses, valid_briers = trainer.train(trainloader, validloader)
+                        valid_scores = trainer.test(validloader)
+                        res = {
+                            "valid_scores": valid_scores,
+                            "train_losses": train_losses,
+                            "train_briers": train_briers,
+                            "valid_losses": valid_losses,
+                            "valid_briers": valid_briers
+                        }
+                        data[config.note] = res
                     else:
                         train_losses, valid_losses = trainer.train(trainloader, validloader)
-                    # calculate scores for validation set
-                    valid_scores = trainer.test(validloader)
-                    
-                    jsonfile = os.path.join(results_jsons, f'{config.note}.json')
-                    with open(jsonfile, 'w') as f:
-                        if config.use_brier:
-                            data = {
-                                'valid_scores': valid_scores,
-                                'train_losses': train_losses,
-                                'train_briers': train_briers,
-                                'valid_losses': valid_losses,
-                                'valid_briers': valid_briers,
-                            }
-                        else:
-                            data = {
-                                'valid_scores': valid_scores,
-                                'train_losses': train_losses,
-                                'valid_losses': valid_losses
-                            }
-                        json.dump(data, f, sort_keys=False, indent=4)
+                        valid_scores = trainer.test(validloader)
+                        res = {
+                            "valid_scores": valid_scores,
+                            "train_losses": train_losses,
+                            "valid_losses": valid_losses
+                        }
+                        data[config.note] = res
+
             else:
                 logger.info(f">>> lr: {lr}   hidden_dim: {h_dim} <<<")
                 config.lr = lr
@@ -160,66 +162,50 @@ if __name__ == "__main__":
                 trainer = AttentiveFP_Trainer(config, logger)
                 if config.use_brier:
                     train_losses, train_briers, valid_losses, valid_briers = trainer.train(trainloader, validloader)
+                    valid_scores = trainer.test(validloader)
+                    res = {
+                        "valid_scores": valid_scores,
+                        "train_losses": train_losses,
+                        "train_briers": train_briers,
+                        "valid_losses": valid_losses,
+                        "valid_briers": valid_briers
+                    }
+                    data[config.note] = res
                 else:
                     train_losses, valid_losses = trainer.train(trainloader, validloader)
-                # calculate scores for validation set
-                valid_scores = trainer.test(validloader)
-                
-                jsonfile = os.path.join(results_jsons, f'{config.note}.json')
-                with open(jsonfile, 'w') as f:
-                    if config.use_brier:
-                        data = {
-                            'valid_scores': valid_scores,
-                            'valid_losses': valid_losses,
-                            'valid_briers': valid_briers,
-                            'train_losses': train_losses,
-                            'train_briers': train_briers,
-                        }
-                    else:
-                        data = {
-                            'valid_scores': valid_scores,
-                            'valid_losses': valid_losses,
-                            'train_losses': train_losses,
-                        }
-                    json.dump(data, f, sort_keys=False, indent=4)
+                    valid_scores = trainer.test(validloader)
+                    res = {
+                        "valid_scores": valid_scores,
+                        "train_losses": train_losses,
+                        "valid_losses": valid_losses
+                    }
+                    data[config.note] = res
 
     logger.info(">>> All trials finished.")
     timer(start_time, logger)
 
-    # Select the best models and jsons
-    logger.info("post prosess: selecting the best model...")
-    last_valid_loss_dict = {}
-    for lr in lrs:
-        for h_dim in hidden_dims:
-            if config.model != "MLP-MLP":    
-                for grid in grids:
-                    trial = f"{config.model}_{config.seed}_{lr}_{h_dim}_{grid}"
-                    with open(os.path.join(results_jsons, f"{trial}.json"), "r") as f:
-                        res = json.load(f)
-                    last_valid_loss_dict[trial] = res["valid_losses"][-1]
-            else:
-                trial = f"{config.model}_{config.seed}_{lr}_{h_dim}"
-                with open(os.path.join(results_jsons, f"{trial}.json"), "r") as f:
-                    res = json.load(f)
-                last_valid_loss_dict[trial] = res["valid_losses"][-1]
-    best_trial = min(last_valid_loss_dict, key=last_valid_loss_dict.get)
+    # saving the trials and select the best models
+    logger.info("post prosess: saving trials and selecting the best model...")
+    with open(os.path.join(trials_dir, f"{config.model}_{config.seed}.json"), "w") as f:
+        json.dump(data, f, sort_keys=False, indent=4)
+    
+    best_trial = min(data, key=lambda k: data[k]['valid_losses'][-1])
+    
     logger.info(f">>> best trial: {best_trial}")
-    logger.info(f">>> best valid loss: {last_valid_loss_dict[best_trial]}")
-    logger.info(f"deleting other results...")
+    logger.info(f">>> best valid loss: {data[best_trial]["valid_losses"][-1]}")
+    logger.info(f"deleting other models...")
     for lr in lrs:
         for h_dim in hidden_dims:
             if config.model != "MLP-MLP":    
                 for grid in grids:
                     trial = f"{config.model}_{config.seed}_{lr}_{h_dim}_{grid}"
                     if trial != best_trial:
-                        os.remove(os.path.join(results_jsons, f"{trial}.json"))
                         os.remove(os.path.join(outdir, "models", f"{trial}.pt"))
             else:
                 trial = f"{config.model}_{config.seed}_{lr}_{h_dim}"
                 if trial != best_trial:
-                    os.remove(os.path.join(results_jsons, f"{trial}.json"))
                     os.remove(os.path.join(outdir, "models", f"{trial}.pt"))
-    
+
     # test
     logger.info("test with best model...")
     best_atrs = best_trial.split("_")
@@ -239,12 +225,11 @@ if __name__ == "__main__":
 
     # saving results
     logger.info("saving results...")
-    with open(os.path.join(results_jsons, f"{best_trial}.json"), "r") as f:
-        res = json.load(f)
-    res["test_scores"] = test_scores
-    keys = ["test_scores"] + [key for key in res if key != "test_scores"]
-    res = {key: res[key] for key in keys}
-    with open(os.path.join(results_jsons, f"{best_trial}.json"), "w") as f:
+    res = {
+        "best_trial": best_trial,
+        "test_scores": test_scores
+    }
+    with open(os.path.join(results_dir, f"{config.model}_{config.seed}.json"), "w") as f:
         json.dump(res, f, sort_keys=False, indent=4)
     
     logger.info("========== All Finished ==========")
