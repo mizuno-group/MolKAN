@@ -1,0 +1,88 @@
+"""
+Created by Zehao Li (Takuho Ri)
+Created on 2025-02-27 (Thu)  14:35:50 (+09:00)
+
+preprocess for clmpy
+Original script: clmpy[https://github.com/mizuno-group/clmpy] composed by Shumpei Nemoto
+"""
+
+import argparse
+import yaml
+import pandas as pd
+import torch.nn as nn
+import torch.optim as optim
+from schedulefree import RAdamScheduleFree
+from torch.utils.data import DataLoader, DistributedSampler
+
+from .data_handler import *
+from .utils import EarlyStopping, warmup_schedule
+
+
+def load_train_objs(args,model):
+    criteria = nn.CrossEntropyLoss(reduction="sum")
+    optimizer = RAdamScheduleFree(model.parameters(),lr=args.max_lr)
+    lr_schedule = warmup_schedule(args.warmup)
+    es = EarlyStopping(patience=args.patience)
+    return criteria, optimizer, es
+
+def worker_init_fn(worker_id):
+    seed = torch.initial_seed() % 2**32
+    seed += worker_id
+    np.random.seed(seed)
+    random.seed(seed)
+    torch.manual_seed(seed)
+
+def prep_train_data(args,train_data):
+    buckets = (args.buckets_min, args.buckets_max, args.buckets_step)
+    trainset = CLM_Dataset(train_data["input"],train_data["output"],args.token,args.SFL) # メモリを抑えるオプションを入れたい
+    ddpsampler = DistributedSampler(trainset, shuffle=True)
+    train_sampler = BucketSampler(trainset,buckets,shuffle=True,batch_size=args.batch_size)
+    train_loader = DataLoader(trainset,
+                              sampler=ddpsampler,
+                              batch_sampler=train_sampler,
+                              collate_fn=collate,
+                              num_workers=args.num_workers,
+                              worker_init_fn=worker_init_fn)
+    return train_loader
+
+def prep_valid_data(args,valid_data):
+    validset = CLM_Dataset(valid_data["input"],valid_data["output"],args.token,args.SFL)
+    valid_loader = DataLoader(validset,
+                              shuffle=False,
+                              collate_fn=collate,
+                              batch_size=args.batch_size,
+                              num_workers=args.num_workers)
+    return valid_loader
+
+def prep_encode_data(args,smiles):
+    dataset = Encoder_Dataset(smiles,args)
+    loader = DataLoader(dataset,
+                        batch_size=args.batch_size,
+                        collate_fn=encoder_collate,
+                        num_workers=args.num_workers)
+    return loader
+
+def prep_token(token_path):
+    tokens = tokens_table(token_path)
+    return tokens
+
+def get_notebook_args(config_file,**kwargs):
+    parser = argparse.ArgumentParser()
+    args = parser.parse_args("")
+    with open(config_file,"r") as f:
+        config = yaml.safe_load(f)
+    for v,w in config.items():
+        args.__dict__[v] = w
+    for v,w in kwargs:
+        args.__dict__[v] = w
+    try:
+        args.patience = args.patience_step // args.valid_step_range
+    except AttributeError:
+        pass
+    args.config = config_file
+    args.experiment_dir = "/".join(args.config.split("/")[:-1])
+    args.token = prep_token(args.token_path)
+    args.vocab_size = args.token.length
+    args.device = "cuda:0" if torch.cuda.is_available() else "cpu"
+    args.model_path = ""
+    return args
