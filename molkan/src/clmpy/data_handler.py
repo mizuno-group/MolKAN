@@ -7,6 +7,7 @@ Original script: clmpy[https://github.com/mizuno-group/clmpy] composed by Shumpe
 """
 
 from collections import defaultdict
+from functools import partial
 import random
 from concurrent.futures import ProcessPoolExecutor
 
@@ -62,8 +63,7 @@ class BucketSampler(Sampler):
     def __len__(self):
         return self.length
     
-def tokenize(s):
-    global tokens
+def tokenize(s, tokens):
     s = s.replace("Br","R").replace("Cl","L")
     tok = []
     while len(s) > 0:
@@ -78,8 +78,7 @@ def tokenize(s):
             s = s[1:]
     return tok
 
-def sfl_tokenize(s):
-    global tokens
+def sfl_tokenize(s, tokens):
     s = s.replace("Br","R").replace("Cl","L")
     tok = []
     char = ""
@@ -97,22 +96,22 @@ def sfl_tokenize(s):
                 char = ""
     return tok
                 
-def one_hot_encoder(tokenized):
-    global tokens
+def one_hot_encoder(tokenized, tokens):
     enc = np.array([tokens.dict[v] for v in tokenized])
     enc = np.concatenate([np.array([1]),enc,np.array([2])]).astype(np.int32)
     return enc
 
 def seq2id(smiles,tokens,sfl=True):
-    tok = sfl_tokenize if sfl else tokenize
+    tok = partial(sfl_tokenize if sfl else tokenize, tokens=tokens)
     tokenized = []
     with ProcessPoolExecutor() as executor:
         for toks in executor.map(tok, smiles, chunksize=10000):
-            tokenized += toks
+            tokenized.append(toks)
+    enc = partial(one_hot_encoder, tokens=tokens)
     encoded = []
     with ProcessPoolExecutor() as executor:
-        for encs in executor.map(one_hot_encoder, tokenized, chunksize=10000):
-            encoded += encs
+        for encs in executor.map(enc, tokenized, chunksize=10000):
+            encoded.append(encs)
     return encoded
 
 class tokens_table():
