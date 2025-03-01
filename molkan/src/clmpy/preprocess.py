@@ -31,13 +31,12 @@ def worker_init_fn(worker_id):
     random.seed(seed)
     torch.manual_seed(seed)
 
-def prep_train_data(args,train_data):
+def prep_train_data(args):
     buckets = (args.buckets_min, args.buckets_max, args.buckets_step)
-    trainset = CLM_Dataset(train_data["input"],train_data["output"],args.token,args.SFL) # メモリを抑えるオプションを入れたい
+    trainset = CLM_Dataset(args.train_data,args.token,os.path.join(args.experiment_dir, f"train_{args.global_rank}.dat"),args.SFL) # メモリを抑えるオプションを入れたい
     ddpsampler = DistributedSampler(trainset, shuffle=True)
-    train_sampler = BucketSampler(trainset,buckets,shuffle=True,batch_size=args.batch_size)
+    train_sampler = DistributedBucketSampler(trainset,buckets,ddpsampler,shuffle=False,batch_size=args.batch_size)
     train_loader = DataLoader(trainset,
-                              sampler=ddpsampler,
                               batch_sampler=train_sampler,
                               collate_fn=collate,
                               num_workers=args.num_workers,
@@ -45,8 +44,8 @@ def prep_train_data(args,train_data):
                               pin_memory=True)
     return train_loader
 
-def prep_valid_data(args,valid_data):
-    validset = CLM_Dataset(valid_data["input"],valid_data["output"],args.token,args.SFL)
+def prep_valid_data(args):
+    validset = CLM_Dataset(args.valid_data,args.token, os.path.join(args.experiment_dir, f"valid_{args.global_rank}.dat"), args.SFL)
     valid_loader = DataLoader(validset,
                               shuffle=False,
                               collate_fn=collate,

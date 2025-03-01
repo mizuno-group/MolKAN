@@ -49,8 +49,6 @@ class Trainer():
         self,
         args,
         model: nn.Module,
-        train_data: pd.DataFrame,
-        valid_data: pd.DataFrame,
         criteria: nn.Module,
         optimizer: optim.Optimizer,
         es,
@@ -58,8 +56,8 @@ class Trainer():
     ):
         self.logger = logger
         self.model = model
-        self.train_data = train_data
-        self.valid_data = prep_valid_data(args,valid_data)
+        self.train_path = args.train_data
+        self.valid_data = prep_valid_data(args)
         self.criteria = criteria
         self.optimizer = optimizer
         self.es = es
@@ -117,6 +115,7 @@ class Trainer():
         for datas in train_data:
             self.steps_run += 1
             l_t = self._train_batch(*datas,args.device)
+            del datas
             if self.steps_run % args.valid_step_range == 0 and args.global_rank == 0:
                 l_v = []
                 for v, w in self.valid_data:
@@ -141,10 +140,10 @@ class Trainer():
     def train(self,args):
         end = False
         l, l2 = [], []
-        if args.global_rank ==0:
-            self.logger.info("processing train data...")
-        train_data = prep_train_data(args,self.train_data)
-        if args.global_rank ==0:
+        if args.global_rank == 0:
+            self.logger.info("processing large train data...")
+        train_data = prep_train_data(args)
+        if args.global_rank == 0:
             self.logger.info("train start...")
             epoch = 0
         while end == False:
@@ -152,8 +151,9 @@ class Trainer():
             l.extend(a)
             l2.extend(b)
             epoch += 1
-            if args.global_rank ==0:
+            if args.global_rank == 0:
                 self.logger.info(f">>> Epoch{epoch} done.")
+            
         return l, l2
     
 
@@ -167,10 +167,6 @@ def main():
         logger = init_logger(args.experiment_dir)
     seed = args.seed + args.global_rank
     fix_seed(seed, fix_gpu=False)
-    if args.global_rank == 0:
-        logger.info("loading data...")
-    train_data = pd.read_csv(args.train_data)
-    valid_data = pd.read_csv(args.valid_data) 
     model = GRU(args)
     params, tr_params = count_param(model)
     if args.global_rank == 0:
@@ -182,9 +178,9 @@ def main():
         raise ValueError("Can't use CUDA !!! Check your environment !!!")
     criteria, optimizer, es = load_train_objs(args,model)
     if args.global_rank == 0:
-        trainer = Trainer(args, model,train_data,valid_data,criteria,optimizer, es, logger)
+        trainer = Trainer(args, model,criteria,optimizer, es, logger)
     else:
-        trainer = Trainer(args, model,train_data,valid_data,criteria,optimizer, es)
+        trainer = Trainer(args, model,criteria,optimizer, es)
     loss_t, loss_v = trainer.train(args)
     if args.global_rank == 0:
         logger.info("saving results...")
