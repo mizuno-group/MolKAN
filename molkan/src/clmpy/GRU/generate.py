@@ -8,6 +8,7 @@ Original script: clmpy[https://github.com/mizuno-group/clmpy] composed by Shumpe
 
 
 import os
+import sys
 from argparse import ArgumentParser, FileType
 import yaml
 
@@ -15,8 +16,10 @@ import numpy as np
 import pandas as pd
 import torch
 
-from .model import GRU
-from ..preprocess import prep_token
+sys.path.append("/work/gd43/a97009/MolKAN/molkan/src")
+
+from clmpy.GRU.model import GRU
+from clmpy.preprocess import prep_token
 
 def get_args():
     parser = ArgumentParser()

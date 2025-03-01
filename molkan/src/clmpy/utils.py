@@ -7,10 +7,16 @@ Original script: clmpy[https://github.com/mizuno-group/clmpy] composed by Shumpe
 """
 
 import os
+import sys
 import re
+from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import math
+import logging
+from tqdm import tqdm
+import random
+import torch
 
 from .data_handler import seq2id
 
@@ -224,3 +230,95 @@ class Evaluation():
                 else:
                     wn += 1
         return cc, rc, wc, rn, wn
+
+# Initializing Logger
+def init_logger(outdir, filename="log.txt", level_console="info", level_file="debug"):
+    
+    level_dic = {
+        "critical": logging.CRITICAL,
+        "error": logging.ERROR,
+        "warning": logging.WARNING,
+        "info": logging.INFO,
+        "debug": logging.DEBUG,
+        "notset": logging.NOTSET
+    }
+
+    root_logger = logging.getLogger()
+    if root_logger.hasHandlers():
+        root_logger.handlers.clear()
+
+    fmt = logging.Formatter(
+        fmt = "[%(asctime)s] [%(levelname)s] %(message)s",
+        datefmt = "%Y%m%d-%H%M%S"
+    )
+
+    fh = logging.FileHandler(filename=Path(outdir, filename))
+    fh.setLevel(level_dic[level_file])
+    fh.setFormatter(fmt)
+
+    th = TqdmLoggingHandler()
+    th.setLevel(level_dic[level_console])
+    th.setFormatter(fmt)
+
+    logging.basicConfig(
+        level=level_dic["notset"],
+        handlers=[fh, th]
+    )
+
+    logger = logging.getLogger(__name__)
+    logging.getLogger("matplotlib").setLevel(level_dic["warning"])
+    return logger
+
+class TqdmLoggingHandler(logging.Handler):
+    def __init__(self,level=logging.NOTSET):
+        super().__init__(level)
+
+    def emit(self,record):
+        try:
+            msg = self.format(record)
+            tqdm.write(msg,file=sys.stderr)
+            self.flush()
+        except Exception:
+            self.handleError(record)
+
+
+def fix_seed(seed:int=42, fix_gpu:bool=False):
+    """
+    Fix random seed for reproducibility across Python, NumPy, and PyTorch.
+
+    Args:
+        seed (int): Seed value for random number generators.
+        fix_gpu (bool): If True, GPU-related randomness is also fixed. 
+                        This may reduce performance but ensures reproducibility.
+                        Default is False.
+
+    Returns:
+        None
+    """
+    # Fix seed for Python's built-in random module
+    random.seed(seed)
+    # Fix seed for NumPy
+    np.random.seed(seed)
+    # Fix seed for PyTorch on CPU
+    torch.manual_seed(seed)
+    # Fix seed for PyTorch on GPU if GPU is available and requested
+    if fix_gpu and torch.cuda.is_available():
+        torch.cuda.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)  # For multi-GPU setup
+        torch.backends.cudnn.benchmark = False
+        torch.backends.cudnn.deterministic = True
+
+# Count parameters num
+def count_param(model):
+    def format_params(num):
+        if num >= 1e9:
+            return f"{num / 1e9:.3f}B"
+        elif num >= 1e6:
+            return f"{num / 1e6:.3f}M"
+        elif num >= 1e3:
+            return f"{num / 1e3:.3f}K"
+        else:
+            return str(num)
+    total_params = format_params(sum(p.numel() for p in model.parameters()))
+    trainable_params = format_params(sum(p.numel() for p in model.parameters() if p.requires_grad))
+    return total_params, trainable_params

@@ -8,6 +8,7 @@ Original script: clmpy[https://github.com/mizuno-group/clmpy] composed by Shumpe
 
 from collections import defaultdict
 import random
+from concurrent.futures import ProcessPoolExecutor
 
 import numpy as np
 import torch
@@ -61,57 +62,57 @@ class BucketSampler(Sampler):
     def __len__(self):
         return self.length
     
-def tokenize(smiles,token_list):
-    tokenized = []
-    for s in smiles:
-        s = s.replace("Br","R").replace("Cl","L")
-        tok = []
-        while len(s) > 0:
-            if len(s) >= 2 and (s[0] == "@" or s[0] == "["):
-                for j in np.arange(3,0,-1):
-                    if s[:j] in token_list:
-                        tok.append(s[:j])
-                        s = s[j:]
-                        break
-            else:
-                tok.append(s[0])
-                s = s[1:]
-        tokenized.append(tok)
-    return tokenized
+def tokenize(s):
+    global tokens
+    s = s.replace("Br","R").replace("Cl","L")
+    tok = []
+    while len(s) > 0:
+        if len(s) >= 2 and (s[0] == "@" or s[0] == "["):
+            for j in np.arange(3,0,-1):
+                if s[:j] in tokens.table:
+                    tok.append(s[:j])
+                    s = s[j:]
+                    break
+        else:
+            tok.append(s[0])
+            s = s[1:]
+    return tok
 
-def sfl_tokenize(smiles,token_list):
-    tokenized = []
-    for s in smiles:
-        s = s.replace("Br","R").replace("Cl","L")
-        tok = []
-        char = ""
-        for v in s:
-            if len(char) == 0 and v != "[":
-                tok.append(v)
-                continue
-            char += v
-            if len(char) > 1:
-                if v == "]":
-                    if char in token_list:
-                        tok.append(char)
-                    else:
-                        tok.append("<unk>")
-                    char = ""
-        tokenized.append(tok)
-    return tokenized
+def sfl_tokenize(s):
+    global tokens
+    s = s.replace("Br","R").replace("Cl","L")
+    tok = []
+    char = ""
+    for v in s:
+        if len(char) == 0 and v != "[":
+            tok.append(v)
+            continue
+        char += v
+        if len(char) > 1:
+            if v == "]":
+                if char in tokens.table:
+                    tok.append(char)
+                else:
+                    tok.append("<unk>")
+                char = ""
+    return tok
                 
-def one_hot_encoder(tokenized,token_dict):
-    encoded = []
-    for token in tokenized:
-        enc = np.array([token_dict[v] for v in token])
-        enc = np.concatenate([np.array([1]),enc,np.array([2])]).astype(np.int32)
-        encoded.append(enc)
-    return encoded
+def one_hot_encoder(tokenized):
+    global tokens
+    enc = np.array([tokens.dict[v] for v in tokenized])
+    enc = np.concatenate([np.array([1]),enc,np.array([2])]).astype(np.int32)
+    return enc
 
 def seq2id(smiles,tokens,sfl=True):
     tok = sfl_tokenize if sfl else tokenize
-    tokenized = tok(smiles,tokens.table)
-    encoded = one_hot_encoder(tokenized,tokens.dict)
+    tokenized = []
+    with ProcessPoolExecutor() as executor:
+        for toks in executor.map(tok, smiles, chunksize=10000):
+            tokenized += toks
+    encoded = []
+    with ProcessPoolExecutor() as executor:
+        for encs in executor.map(one_hot_encoder, tokenized, chunksize=10000):
+            encoded += encs
     return encoded
 
 class tokens_table():

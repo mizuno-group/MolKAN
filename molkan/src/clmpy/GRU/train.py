@@ -8,6 +8,7 @@ Original script: clmpy[https://github.com/mizuno-group/clmpy] composed by Shumpe
 
 
 import os
+import sys
 from argparse import ArgumentParser, FileType
 import yaml
 import time
@@ -16,12 +17,14 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from torch.distributed import get_rank
 from torch.nn.parallel import DistributedDataParallel as DDP
 
-from .model import GRU
-from ..preprocess import *
-from ..utils import plot_loss
-from ...utils import init_logger, fix_seed, count_param
+sys.path.append("/work/gd43/a97009/MolKAN/molkan/src")
+
+from clmpy.GRU.model import GRU
+from clmpy.preprocess import *
+from clmpy.utils import plot_loss, init_logger, fix_seed, count_param
 
 def get_args():
     parser = ArgumentParser()
@@ -54,7 +57,7 @@ class Trainer():
         logger=None
     ):
         self.logger = logger
-        self.model = model.to(args.device)
+        self.model = model
         self.train_data = train_data
         self.valid_data = prep_valid_data(args,valid_data)
         self.criteria = criteria
@@ -114,7 +117,7 @@ class Trainer():
         for datas in train_data:
             self.steps_run += 1
             l_t = self._train_batch(*datas,args.device)
-            if self.steps_run % args.valid_step_range == 0 and args.local_rank == 0:
+            if self.steps_run % args.valid_step_range == 0 and args.global_rank == 0:
                 l_v = []
                 for v, w in self.valid_data:
                     l_v.append(self._valid_batch(v,w,args.device))
@@ -138,11 +141,19 @@ class Trainer():
     def train(self,args):
         end = False
         l, l2 = [], []
+        if args.global_rank ==0:
+            self.logger.info("processing train data...")
+        train_data = prep_train_data(args,self.train_data)
+        if args.global_rank ==0:
+            self.logger.info("train start...")
+            epoch = 0
         while end == False:
-            train_data = prep_train_data(args,self.train_data)
             a, b, end = self._train(args,train_data)
             l.extend(a)
             l2.extend(b)
+            epoch += 1
+            if args.global_rank ==0:
+                self.logger.info(f">>> Epoch{epoch} done.")
         return l, l2
     
 
@@ -150,31 +161,32 @@ def main():
     ts = time.perf_counter()
 
     args = get_args()
-    if args.local_rank == 0:
+    torch.distributed.init_process_group(backend="nccl")
+    args.global_rank = get_rank()
+    if args.global_rank == 0:
         logger = init_logger(args.experiment_dir)
-    seed = args.seed + args.local_rank
+    seed = args.seed + args.global_rank
     fix_seed(seed, fix_gpu=False)
-    if args.local_rank == 0:
+    if args.global_rank == 0:
         logger.info("loading data...")
     train_data = pd.read_csv(args.train_data)
     valid_data = pd.read_csv(args.valid_data) 
     model = GRU(args)
     params, tr_params = count_param(model)
-    if args.local_rank == 0:
+    if args.global_rank == 0:
         logger.info(f"params: {params}  trainable params: {tr_params}")
     if torch.cuda.is_available():
-        torch.distributed.init_process_group(backend="nccl")
+        model = model.to(args.device)
         model = DDP(module=model, device_ids=[args.local_rank])
     else:
         raise ValueError("Can't use CUDA !!! Check your environment !!!")
     criteria, optimizer, es = load_train_objs(args,model)
-    if args.local_rank == 0:
-        logger.info("train start ...")
+    if args.global_rank == 0:
         trainer = Trainer(args, model,train_data,valid_data,criteria,optimizer, es, logger)
     else:
         trainer = Trainer(args, model,train_data,valid_data,criteria,optimizer, es)
     loss_t, loss_v = trainer.train(args)
-    if args.local_rank == 0:
+    if args.global_rank == 0:
         logger.info("saving results...")
         torch.save(trainer.best_model.state_dict(),os.path.join(args.experiment_dir,"best_model.pt"))
         os.remove(trainer.ckpt_path)
@@ -187,11 +199,11 @@ def main():
     h = dt // 3600
     m = (dt % 3600) // 60
     s = dt % 60
-    if args.local_rank == 0:
+    if args.global_rank == 0:
         logger.info(f"elapsed time: {h} h {m} min {s} sec")
     
     torch.distributed.destroy_process_group()
-    print(f"Process {args.local_rank} finished.")
+    print(f"Process {args.global_rank} finished.")
 
 if __name__ == "__main__":
     main()

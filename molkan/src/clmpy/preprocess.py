@@ -21,7 +21,6 @@ from .utils import EarlyStopping, warmup_schedule
 def load_train_objs(args,model):
     criteria = nn.CrossEntropyLoss(reduction="sum")
     optimizer = RAdamScheduleFree(model.parameters(),lr=args.max_lr)
-    lr_schedule = warmup_schedule(args.warmup)
     es = EarlyStopping(patience=args.patience)
     return criteria, optimizer, es
 
@@ -42,7 +41,8 @@ def prep_train_data(args,train_data):
                               batch_sampler=train_sampler,
                               collate_fn=collate,
                               num_workers=args.num_workers,
-                              worker_init_fn=worker_init_fn)
+                              worker_init_fn=worker_init_fn,
+                              pin_memory=True)
     return train_loader
 
 def prep_valid_data(args,valid_data):
@@ -51,7 +51,8 @@ def prep_valid_data(args,valid_data):
                               shuffle=False,
                               collate_fn=collate,
                               batch_size=args.batch_size,
-                              num_workers=args.num_workers)
+                              num_workers=args.num_workers,
+                              pin_memory=True)
     return valid_loader
 
 def prep_encode_data(args,smiles):
