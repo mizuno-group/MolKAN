@@ -16,7 +16,7 @@ import numpy as np
 import pandas as pd
 import torch
 
-sys.path.append("/work/gd43/a97009/MolKAN/molkan/src")
+sys.path.append("/workspace/ToxPred/MolKAN/molkan/src")
 
 from clmpy.GRU.model import GRU
 from clmpy.preprocess import prep_encode_data, prep_token

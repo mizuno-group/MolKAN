@@ -20,7 +20,7 @@ import torch.optim as optim
 from torch.distributed import get_rank
 from torch.nn.parallel import DistributedDataParallel as DDP
 
-sys.path.append("/work/gd43/a97009/MolKAN/molkan/src")
+sys.path.append("/workspace/ToxPred/MolKAN/molkan/src")
 
 from clmpy.GRU.model import GRU
 from clmpy.preprocess import *
