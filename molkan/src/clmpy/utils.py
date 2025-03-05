@@ -21,7 +21,7 @@ import torch
 from .data_handler import seq2id
 
 
-def plot_loss(train,valid,train2=[],valid2=[],dir_name=""):
+def plot_loss(train,valid,train2=[],valid2=[],dir_name="", plot_name=None):
     fig = plt.figure(figsize=(12,7))
     ax1 = fig.add_subplot(211)
     loss1 = ax1.plot(train,color="blue",label="train_rec")
@@ -52,7 +52,10 @@ def plot_loss(train,valid,train2=[],valid2=[],dir_name=""):
         ax4.set_ylabel("KL loss")
         h4, l4 = ax4.get_legend_handles_labels()
         ax2.legend(h2+h4,l2+l4)
-    plt.savefig(os.path.join(dir_name,"loss.png"),bbox_inches="tight")
+    if plot_name is None:
+        plt.savefig(os.path.join(dir_name,"loss.png"),bbox_inches="tight")
+    else:
+        plt.savefig(os.path.join(dir_name,f"{plot_name}_loss.png"),bbox_inches="tight")
 
 
 def generate_uniform_random(dim,n,low=-1,high=1):

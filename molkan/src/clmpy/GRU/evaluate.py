@@ -20,12 +20,12 @@ sys.path.append("/work/gd43/a97009/MolKAN/molkan/src")
 
 from clmpy.GRU.model import GRU
 from clmpy.preprocess import *
+from clmpy.utils import init_logger
 
 def get_args():
     parser = ArgumentParser()
     parser.add_argument("--config",type=FileType(mode="r"),default="config.yml")
-    parser.add_argument("--model_path",type=str,default="best_model.pt")
-    parser.add_argument("--test_path",type=str,default="data/val_10k.csv")
+    parser.add_argument("--max_lr", type=float)
     args = parser.parse_args()
     config_dict = yaml.load(args.config,Loader=yaml.FullLoader)
     arg_dict = args.__dict__
@@ -33,6 +33,7 @@ def get_args():
         arg_dict[key] = value
     args.config = args.config.name
     args.experiment_dir = "/".join(args.config.split("/")[:-1])
+    args.model_path = os.path.join(args.experiment_dir, f"best_model_maxlr_{args.max_lr}.pt")
     args.token = prep_token(args.token_path)
     args.vocab_size = args.token.length
     args.device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -84,10 +85,10 @@ class Evaluator():
             row.append([x_str,y_str,p_str,judge])
         return row
 
-    def evaluate(self,test_data):
+    def evaluate(self):
         self.model.eval()
         res = []
-        test_data = prep_valid_data(self.args,test_data)
+        test_data = prep_valid_encoded_data(self.args)
         with torch.no_grad():
             for source, target in test_data:
                 res.extend(self._eval_batch(source,target,self.args.device))
@@ -97,12 +98,12 @@ class Evaluator():
     
 def main():
     args = get_args()
-    test_data = pd.read_csv(args.test_path,index_col=0)
+    logger = init_logger(args.experiment_dir, f"maxlr_{args.max_lr}.log")
     model = GRU(args)
     evaluator = Evaluator(model,args)
-    results, accuracy = evaluator.evaluate(test_data)
-    results.to_csv(os.path.join(args.experiment_dir,"evaluate_result.csv"))
-    print("perfect accuracy: {}".format(accuracy)) 
+    results, accuracy = evaluator.evaluate()
+    results.to_csv(os.path.join(args.experiment_dir,f"evaluate_result_maxlr_{args.max_lr}.csv"))
+    logger.info("best model perfect accuracy: {}".format(accuracy)) 
    
 
 if __name__ == "__main__":

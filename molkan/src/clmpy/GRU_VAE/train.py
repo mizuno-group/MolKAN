@@ -2,12 +2,13 @@
 Created by Zehao Li (Takuho Ri)
 Created on 2025-02-27 (Thu)  14:59:35 (+09:00)
 
-training module for clmpy.gruvae
+training module for clmpy.gruvae (DDP)
 Original script: clmpy[https://github.com/mizuno-group/clmpy] composed by Shumpei Nemoto
 """
 
 
 import os
+import sys
 from argparse import ArgumentParser, FileType
 import yaml
 import time
@@ -16,19 +17,19 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import DataLoader
+from torch.distributed import get_rank
+from torch.nn.parallel import DistributedDataParallel as DDP
 
-from .model import GRUVAE, KLLoss
-from ..preprocess import *
-from ..utils import plot_loss
+sys.path.append("/work/gd43/a97009/MolKAN/molkan/src")
 
-def set_seed(seed):
-    torch.manual_seed(seed)
-    np.random.seed(seed)
+from clmpy.GRU_VAE.model import GRUVAE, KLLoss
+from clmpy.preprocess import *
+from clmpy.utils import plot_loss, init_logger, fix_seed, count_param
 
 def get_args():
     parser = ArgumentParser()
     parser.add_argument("--config",type=FileType(mode="r"),default=None)
+    parser.add_argument("--max_lr", type=float, default=None)
     args = parser.parse_args()
     config_dict = yaml.load(args.config,Loader=yaml.FullLoader)
     arg_dict = args.__dict__
@@ -40,6 +41,7 @@ def get_args():
     args.vocab_size = args.token.length
     args.patience = args.patience_step // args.valid_step_range
     args.device = "cuda:0" if torch.cuda.is_available() else "cpu"
+    args.local_rank = int(os.environ["LOCAL_RANK"])
     return args
 
 
@@ -48,19 +50,17 @@ class Trainer():
         self,
         args,
         model: nn.Module,
-        train_data: pd.DataFrame,
-        valid_data: pd.DataFrame,
         criteria: nn.Module,
         optimizer: optim.Optimizer,
-        scheduler: optim.lr_scheduler.LRScheduler,
         es,
+        logger=None
     ):
-        self.model = model.to(args.device)
-        self.train_data = train_data
-        self.valid_data = prep_valid_data(args,valid_data)
+        self.logger = logger
+        self.model = model
+        self.train_path = args.train_data
+        self.valid_data = prep_valid_encoded_data(args)
         self.criteria = criteria
         self.optimizer = optimizer
-        self.scheduler = scheduler
         self.es = es
         self.beta = args.beta
         self.steps_run = 0
@@ -73,16 +73,15 @@ class Trainer():
         ckpt = torch.load(path)
         self.model.load_state_dict(ckpt["model"])
         self.optimizer.load_state_dict(ckpt["optimizer"])
-        self.scheduler.load_state_dict(ckpt["scheduler"])
         self.steps_run = ckpt["step"]
         self.es.num_bad_steps = ckpt["num_bad_steps"]
         self.es.best = ckpt["es_best"]
 
     def _save(self,path,step):
+        self.optimizer.eval()
         ckpt = {
             "model": self.model.state_dict(),
             "optimizer": self.optimizer.state_dict(),
-            "scheduler": self.scheduler.state_dict(),
             "step": step,
             "num_bad_steps": self.es.num_bad_steps,
             "es_best": self.es.best
@@ -91,6 +90,7 @@ class Trainer():
 
     def _train_batch(self,source,target,device):
         self.model.train()
+        self.optimizer.train()
         self.optimizer.zero_grad()
         source = source.to(device)
         target = target.to(device)
@@ -99,11 +99,11 @@ class Trainer():
         l2 = KLLoss(mu,log_var) / source.shape[1]
         (l + l2 * self.beta).backward()
         self.optimizer.step()
-        self.scheduler.step()
         return l.item(), l2.item()
 
     def _valid_batch(self,source,target,device):
         self.model.eval()
+        self.optimizer.eval()
         source = source.to(device)
         target = target.to(device)
         with torch.no_grad():
@@ -119,24 +119,25 @@ class Trainer():
         for datas in train_data:
             self.steps_run += 1
             l_t, l_t2 = self._train_batch(*datas,args.device)
-            if self.steps_run % args.valid_step_range == 0:
+            lt.append(l_t)
+            lt2.append(l_t2)
+            if self.steps_run % args.valid_step_range == 0 and args.global_rank == 0:
                 l = []
                 for v,w in self.valid_data:
                     l_v, l_v2 = self._valid_batch(v,w,args.device)
                     l.append(l_v + l_v2 * self.beta)
                 l = np.mean(l)
-                lt.append(l_t)
                 lv.append(l_v)
-                lt2.append(l_t2)
                 lv2.append(l_v2)
                 end = self.es.step(l)
                 if l < min_l:
                     self.best_model = self.model
                     min_l = l
                 self._save(self.ckpt_path,self.steps_run)
-                print(f"step {self.steps_run} | train_loss: {l_t + l_t2 * self.beta}, valid_loss: {l}")
+                self.logger.info(f"step {self.steps_run} | train_loss: {l_t + l_t2 * self.beta}, valid_loss: {l}")
                 if end:
-                    print(f"Early stopping at step {self.steps_run}")
+                    self.logger.info(f"Early stopping at step {self.steps_run}")
+                    torch.distributed.destroy_process_group()
                     return lt, lv, lt2, lv2, end
             if self.steps_run >= args.steps:
                 end = True
@@ -146,39 +147,61 @@ class Trainer():
     def train(self,args):
         end = False
         lt, lv, lt2, lv2 = [], [], [], []
+        train_data = prep_train_encoded_data(args)
+        if args.global_rank == 0:
+            self.logger.info("train start...")
         while end == False:
-            train_data = prep_train_data(args,self.train_data)
             l_t, l_v, l_t2, l_v2, end = self._train(args,train_data)
             lt.extend(l_t)
             lv.extend(l_v)
             lt2.extend(l_t2)
             lv2.extend(l_v2)
+        if self.steps_run == args.steps and args.global_rank == 0:
+            self.logger.info(">>> reaching train step limit. TRAIN FINISHED.")
+            torch.distributed.destroy_process_group()
         return lt, lv, lt2, lv2
     
 
 def main():
-    args = get_args()
-    set_seed(args.seed)
-    print("loading data")
-    train_data = pd.read_csv(args.train_data,index_col=0)
-    valid_data = pd.read_csv(args.valid_data,index_col=0) 
-    model = GRUVAE(args)
-    criteria, optimizer, scheduler, es = load_train_objs(args,model)
-    print("train start")
-    trainer = Trainer(args,model,train_data,valid_data,criteria,optimizer,scheduler,es)
-    loss_t, loss_v, loss_t2, loss_v2 = trainer.train(args)
-    torch.save(trainer.best_model.state_dict(),os.path.join(args.experiment_dir,"best_model.pt"))
-    os.remove(trainer.ckpt_path)
-    if args.plot:
-        plot_loss(loss_t,loss_v,loss_t2,loss_v2,dir_name=args.experiment_dir)
-
-
-if __name__ == "__main__":
     ts = time.perf_counter()
-    main()
+
+    args = get_args()
+    torch.distributed.init_process_group(backend="nccl")
+    args.global_rank = get_rank()
+    if args.global_rank == 0:
+        logger = init_logger(args.experiment_dir, filename=f"maxlr_{args.max_lr}.log")
+    seed = args.seed + args.global_rank
+    fix_seed(seed, fix_gpu=False)
+    model = GRUVAE(args)
+    params, tr_params = count_param(model)
+    if args.global_rank == 0:
+        logger.info(f"params: {params}  trainable params: {tr_params}")
+    if torch.cuda.is_available():
+        model = model.to(args.device)
+        model = DDP(module=model, device_ids=[args.local_rank])
+    else:
+        raise ValueError("Can't use CUDA !!! Check your environment !!!")
+    criteria, optimizer, es = load_train_objs(args,model)
+    if args.global_rank == 0:
+        trainer = Trainer(args, model,criteria,optimizer, es, logger)
+    else:
+        trainer = Trainer(args, model,criteria,optimizer, es)
+    loss_t, loss_v, loss_t2, loss_v2 = trainer.train(args)
+    if args.global_rank == 0:
+        logger.info("saving results...")
+        torch.save(trainer.best_model.state_dict(),os.path.join(args.experiment_dir,f"best_model_maxlr_{args.max_lr}.pt"))
+        os.remove(trainer.ckpt_path)
+        if args.plot:
+            plot_loss(loss_t,loss_v,loss_t2,loss_v2,dir_name=args.experiment_dir, plot_name=f"maxlr_{args.max_lr}")
+        logger.info(">>> experiment finished.")
+    
     tg = time.perf_counter()
     dt = tg - ts
     h = dt // 3600
     m = (dt % 3600) // 60
     s = dt % 60
-    print(f"elapsed time: {h} h {m} min {s} sec")
+    if args.global_rank == 0:
+        logger.info(f"elapsed time: {h} h {m} min {s} sec")
+
+if __name__ == "__main__":
+    main()

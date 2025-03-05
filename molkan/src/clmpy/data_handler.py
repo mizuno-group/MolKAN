@@ -7,6 +7,7 @@ Original script: clmpy[https://github.com/mizuno-group/clmpy] composed by Shumpe
 """
 
 import os
+import sys
 import psutil
 from collections import defaultdict
 from functools import partial
@@ -78,7 +79,6 @@ class DistributedBucketSampler(Sampler):
         batch_size: バッチサイズ
         drop_last: 最後のバッチが不完全な場合に落とすかどうか
         """
-        super().init(dataset)
         self.dataset = dataset
         self.batch_size = batch_size
         self.shuffle = shuffle
@@ -86,10 +86,12 @@ class DistributedBucketSampler(Sampler):
         self.ddp_sampler = ddp_sampler
 
         # ddp_sampler によって割り当てられたインデックスを取得
+        print("loading indices...")
         self.indices = list(ddp_sampler)
 
         # 割り当てられたインデックスに対して、シーケンス長を計算
-        self.lengths = [len(dataset[i][0]) for i in self.indices]
+        print("loadning sequence length...")
+        self.lengths = np.array([(dataset[i][0] != 0).sum() for i in self.indices]).astype(np.int16)
         bucket_range = np.arange(*buckets)
         bucket_assignments = torch.bucketize(torch.tensor(self.lengths), torch.tensor(bucket_range), right=False)
 
@@ -169,8 +171,14 @@ def sfl_tokenize(s, tokens):
     return tok
                 
 def one_hot_encoder(tokenized, tokens):
-    enc = np.array([tokens.dict[v] for v in tokenized])
+    enc = np.array([tokens.dict[v] for v in tokenized]).astype(np.int16)
     enc = np.concatenate([np.array([1]),enc,np.array([2])]).astype(np.int16)
+    assert type(enc) == np.ndarray
+    padding_length = 252 - len(enc)
+    if padding_length > 0:
+        enc = np.concatenate([enc, np.zeros(padding_length, dtype=np.int16)])
+    elif padding_length < 0:
+        enc = enc[:252]
     return enc
 
 def encode_smiles(smiles_and_args):
@@ -179,44 +187,36 @@ def encode_smiles(smiles_and_args):
     output_tokenized = tok_func(output, tokens)
     return one_hot_encoder(input_tokenized, tokens), one_hot_encoder(output_tokenized, tokens)
 
-def seq2id(generator,tokens,memmapfile,sfl=True):
-    tok = sfl_tokenize if sfl else tokenize
-    
-    initial_shape = (500000000,)
-    input_path = os.path.join(os.path.dirname(memmapfile), "input_"+os.path.basename(memmapfile))
-    output_path = os.path.join(os.path.dirname(memmapfile), "output_"+os.path.basename(memmapfile))
-    if os.path.exists(input_path):
-        os.remove(input_path)
-    if os.path.exists(output_path):
-        os.remove(output_path)
-    mm_array_temp_input = np.memmap(input_path, dtype=object, mode='w+', shape=initial_shape)
-    mm_array_temp_output = np.memmap(output_path, dtype=object, mode='w+', shape=initial_shape)
+def seq2id(csvpath,tokens,npypath,sfl=True):
+    tok_func = sfl_tokenize if sfl else tokenize
 
-    with ProcessPoolExecutor() as executor:
-        args_generator = ((input, output, tokens, tok) for input, output in generator)
-        mapped_smiles = executor.map(encode_smiles, args_generator, chunksize=10000)
-        
-        total_smiles = 0
-        for i, (encoded_input, encoded_output) in enumerate(mapped_smiles):
-            mm_array_temp_input[i] = encoded_input
-            mm_array_temp_output[i] = encoded_output
-            total_smiles += 1
+    print("--> calculating datanum")
+    datanum = 0
+    for chunk in pd.read_csv(csvpath, usecols=["input"], chunksize=1000000):
+        datanum += len(chunk)
+    print(f"datanum: {datanum}")
     
-    mm_array_temp_input.flush()
-    mm_array_temp_output.flush()
-    del mm_array_temp_input
-    del mm_array_temp_output
-    mm_array_input = np.memmap(input_path, dtype=object, mode='r+', shape=(total_smiles,))
-    mm_array_input.flush()
-    del mm_array_input
-    mm_array_output = np.memmap(output_path, dtype=object, mode='r+', shape=(total_smiles,))
-    mm_array_output.flush()
-    num = mm_array_output.shape[0]
-    print(f">>> Final mm_array.shape: {mm_array_output.shape}")
-    del mm_array_output
+    shape = (datanum, 2, 252)
+    mm_array = np.memmap(npypath, dtype=np.int16, mode='w+', shape=shape)
+    mem = psutil.virtual_memory()
+    print(f"memory usage: {psutil._common.bytes2human(mem.used)} ({mem.percent}%)")
+
+    print("---> start encoding")
+    args_generator = ((input, output, tokens, tok_func) for input, output in read_smiles_from_csv(csvpath))
+    with ProcessPoolExecutor() as executor:
+        mapped_smiles = executor.map(encode_smiles, args_generator, chunksize=10000)
+        for i, (encoded_input, encoded_output) in enumerate(mapped_smiles):
+            mm_array[i, 0] = encoded_input
+            mm_array[i, 1] = encoded_output
+            if i % 1000000 == 0:
+                mm_array.flush()
+                gc.collect()
+    
+    mm_array.flush()
+    del mm_array
     gc.collect()
 
-    return num
+    return datanum
 
 class tokens_table():
     def __init__(self,token_path):
@@ -228,14 +228,14 @@ class tokens_table():
         self.length = len(self.table)
 
 class CLM_Dataset(Dataset):
-    def __init__(self,path,token,memmapfile,sfl):
-        self.tokens = token
+    def __init__(self,csvpath,tokens,npypath,sfl):
+        self.tokens = tokens
         print("--> start seq2id encoding...")
-        gen = read_smiles_from_csv(path)
-        self.input = os.path.join(os.path.dirname(memmapfile), "input_"+os.path.basename(memmapfile))
-        self.output = os.path.join(os.path.dirname(memmapfile), "output_"+os.path.basename(memmapfile))
-        num = seq2id(gen,self.tokens,memmapfile,sfl)
-        self.datanum = num
+        datanum = seq2id(csvpath, tokens, npypath, sfl)
+        print("--> encoding finished, .npy saved")
+        self.data = np.memmap(npypath, dtype=np.int16, mode="r", shape=(datanum, 2, 252))
+        print(self.data[datanum-1])
+        self.datanum = datanum
         mem = psutil.virtual_memory()
         print(f"memory usage: {psutil._common.bytes2human(mem.used)} ({mem.percent}%)")
 
@@ -243,14 +243,20 @@ class CLM_Dataset(Dataset):
         return self.datanum
     
     def __getitem__(self,idx):
-        if not hasattr(self, "input_data"):
-            self.input_data = np.memmap(self.input, dtype=object, mode='r', shape=(self.datanum,))
-        if not hasattr(self, "output_data"):
-            self.output_data = np.memmap(self.output, dtype=object, mode='r', shape=(self.datanum,))
-        out_i = self.input_data[idx]
-        out_o = self.output_data[idx]
-        return out_i, out_o
+        return self.data[idx, 0].copy(), self.data[idx, 1].copy()
+
+class CLM_Dataset_v2(Dataset):
+    def __init__(self, path, datanum):
+        print("---> start loading tokenized arrays...")
+        self.data = np.memmap(path, dtype=np.int16, mode="r", shape=(datanum, 2, 252))
+        self.datanum = datanum
     
+    def __len__(self):
+        return self.datanum
+    
+    def __getitem__(self, idx):
+        return self.data[idx, 0].copy(), self.data[idx, 1].copy()
+
 class Encoder_Dataset(Dataset):
     def __init__(self,x,token,memmapfile,sfl):
         self.tokens = token
@@ -265,13 +271,15 @@ class Encoder_Dataset(Dataset):
         return out_i
 
 def collate(batch):
-    xs = [torch.ShortTensor(x.copy()) for x, _ in batch]
-    ys = [torch.ShortTensor(y.copy()) for _, y in batch]
-    xs = pad_sequence(xs,batch_first=False,padding_value=0)
-    ys = pad_sequence(ys,batch_first=False,padding_value=0)
+    maxlen_x = max((x != 0).sum() for x, _ in batch)
+    maxlen_y = max((y != 0).sum() for _, y in batch)
+    xs = pad_sequence([torch.LongTensor(x[:maxlen_x]) for x, _ in batch],
+                      batch_first=False,padding_value=0) # no padding, just list2tensor and transpose
+    ys = pad_sequence([torch.LongTensor(y[:maxlen_y]) for _, y in batch],
+                      batch_first=False,padding_value=0)
     return xs, ys
 
 def encoder_collate(batch):
-    xs = [torch.ShortTensor(x) for x, _ in batch]
+    xs = [torch.LongTensor(x) for x, _ in batch]
     xs = pad_sequence(xs,batch_first=False,padding_value=0)
     return xs

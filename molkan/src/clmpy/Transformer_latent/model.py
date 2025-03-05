@@ -14,7 +14,7 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 from transformers.modeling_utils import Conv1D
-from transformers.models.gpt2.modeling_gpt2 import *
+from transformers.models.gpt2.modeling_gpt2 import GPT2Attention, GPT2MLP
 from transformers.models.gpt2.configuration_gpt2 import GPT2Config
 
 DEVICE = "cuda:0" if torch.cuda.is_available() else "cpu"
@@ -60,6 +60,22 @@ class Attention(GPT2Attention):
         w = self.attn_dropout(w)    
         outputs = torch.matmul(w,v) # [B,H,L,D/H]
         return outputs
+    
+    def _split_heads(self, tensor, num_heads, attn_head_size):
+        """
+        Splits hidden_size dim into attn_head_size and num_heads
+        """
+        new_shape = tensor.size()[:-1] + (num_heads, attn_head_size)
+        tensor = tensor.view(*new_shape)
+        return tensor.permute(0, 2, 1, 3)  # (batch, head, seq_length, head_features)
+
+    def _merge_heads(self, tensor, num_heads, attn_head_size):
+        """
+        Merges attn_head_size dim and num_attn_heads dim into hidden_size
+        """
+        tensor = tensor.permute(0, 2, 1, 3).contiguous()
+        new_shape = tensor.size()[:-2] + (num_heads * attn_head_size,)
+        return tensor.view(new_shape)
     
     def forward(self,x,attention_mask=None,layer_past=None):
         # x: [L,B,D]

@@ -2,7 +2,7 @@
 Created by Zehao Li (Takuho Ri)
 Created on 2025-02-27 (Thu)  14:50:10 (+09:00)
 
-training module for clmpy.gru (4GPU DDP using mpi4py)
+training module for clmpy.gru (DDP)
 Original script: clmpy[https://github.com/mizuno-group/clmpy] composed by Shumpei Nemoto
 """
 
@@ -29,6 +29,7 @@ from clmpy.utils import plot_loss, init_logger, fix_seed, count_param
 def get_args():
     parser = ArgumentParser()
     parser.add_argument("--config",type=FileType(mode="r"),default=None)
+    parser.add_argument("--max_lr", type=float, default=None)
     args = parser.parse_args()
     config_dict = yaml.load(args.config,Loader=yaml.FullLoader)
     arg_dict = args.__dict__
@@ -57,7 +58,7 @@ class Trainer():
         self.logger = logger
         self.model = model
         self.train_path = args.train_data
-        self.valid_data = prep_valid_data(args)
+        self.valid_data = prep_valid_encoded_data(args)
         self.criteria = criteria
         self.optimizer = optimizer
         self.es = es
@@ -115,13 +116,13 @@ class Trainer():
         for datas in train_data:
             self.steps_run += 1
             l_t = self._train_batch(*datas,args.device)
-            del datas
+            l.append(l_t)
             if self.steps_run % args.valid_step_range == 0 and args.global_rank == 0:
                 l_v = []
-                for v, w in self.valid_data:
-                    l_v.append(self._valid_batch(v,w,args.device))
+                with torch.no_grad():
+                    for v, w in self.valid_data:
+                        l_v.append(self._valid_batch(v,w,args.device))
                 l_v = np.mean(l_v)
-                l.append(l_t)
                 l2.append(l_v)
                 end = self.es.step(l_v)
                 if len(l) == 1 or l_v < min_l2:
@@ -131,6 +132,7 @@ class Trainer():
                 self.logger.info(f"step {self.steps_run} | train_loss: {l_t}, valid_loss: {l_v}")
                 if end:
                     self.logger.info(f"Early stopping at step {self.steps_run}")
+                    torch.distributed.destroy_process_group()
                     return l, l2, end
             if self.steps_run >= args.steps:
                 end = True
@@ -140,20 +142,16 @@ class Trainer():
     def train(self,args):
         end = False
         l, l2 = [], []
-        if args.global_rank == 0:
-            self.logger.info("processing large train data...")
-        train_data = prep_train_data(args)
+        train_data = prep_train_encoded_data(args)
         if args.global_rank == 0:
             self.logger.info("train start...")
-            epoch = 0
         while end == False:
             a, b, end = self._train(args,train_data)
             l.extend(a)
             l2.extend(b)
-            epoch += 1
-            if args.global_rank == 0:
-                self.logger.info(f">>> Epoch{epoch} done.")
-            
+        if self.steps_run == args.steps and args.global_rank == 0:
+            self.logger.info(">>> reaching train step limit. TRAIN FINISHED.")
+            torch.distributed.destroy_process_group()
         return l, l2
     
 
@@ -164,7 +162,7 @@ def main():
     torch.distributed.init_process_group(backend="nccl")
     args.global_rank = get_rank()
     if args.global_rank == 0:
-        logger = init_logger(args.experiment_dir)
+        logger = init_logger(args.experiment_dir, filename=f"maxlr_{args.max_lr}.log")
     seed = args.seed + args.global_rank
     fix_seed(seed, fix_gpu=False)
     model = GRU(args)
@@ -184,10 +182,10 @@ def main():
     loss_t, loss_v = trainer.train(args)
     if args.global_rank == 0:
         logger.info("saving results...")
-        torch.save(trainer.best_model.state_dict(),os.path.join(args.experiment_dir,"best_model.pt"))
+        torch.save(trainer.best_model.state_dict(),os.path.join(args.experiment_dir,f"best_model_maxlr_{args.max_lr}.pt"))
         os.remove(trainer.ckpt_path)
         if args.plot:
-            plot_loss(loss_t,loss_v,dir_name=args.experiment_dir)
+            plot_loss(loss_t,loss_v,dir_name=args.experiment_dir, plot_name=f"maxlr_{args.max_lr}")
         logger.info(">>> experiment finished.")
 
     tg = time.perf_counter()
@@ -197,9 +195,6 @@ def main():
     s = dt % 60
     if args.global_rank == 0:
         logger.info(f"elapsed time: {h} h {m} min {s} sec")
-    
-    torch.distributed.destroy_process_group()
-    print(f"Process {args.global_rank} finished.")
 
 if __name__ == "__main__":
     main()

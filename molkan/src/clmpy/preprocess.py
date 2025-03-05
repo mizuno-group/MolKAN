@@ -33,7 +33,7 @@ def worker_init_fn(worker_id):
 
 def prep_train_data(args):
     buckets = (args.buckets_min, args.buckets_max, args.buckets_step)
-    trainset = CLM_Dataset(args.train_data,args.token,os.path.join(args.experiment_dir, f"train_{args.global_rank}.dat"),args.SFL) # メモリを抑えるオプションを入れたい
+    trainset = CLM_Dataset(args.train_data,args.token,os.path.join("/work/gd43/a97009/MolKAN/molkan/data/pubchem", "110m_train.npy"),args.SFL)
     ddpsampler = DistributedSampler(trainset, shuffle=True)
     train_sampler = DistributedBucketSampler(trainset,buckets,ddpsampler,shuffle=False,batch_size=args.batch_size)
     train_loader = DataLoader(trainset,
@@ -44,8 +44,34 @@ def prep_train_data(args):
                               pin_memory=True)
     return train_loader
 
+def prep_train_encoded_data(args):
+    trainset = CLM_Dataset_v2(args.train_data, args.train_datanum)
+    print("load DDPSampler...")
+    ddpsampler = DistributedSampler(trainset, shuffle=True)
+    # print("load DDPBucketSampler...")
+    # train_sampler = DistributedBucketSampler(trainset,buckets,ddpsampler,shuffle=False,batch_size=args.batch_size)
+    print("load DataLoader...")
+    train_loader = DataLoader(trainset,
+                              sampler=ddpsampler,
+                              batch_size=args.batch_size,
+                              collate_fn=collate,
+                              num_workers=args.num_workers,
+                              worker_init_fn=worker_init_fn,
+                              pin_memory=True)
+    return train_loader
+
 def prep_valid_data(args):
-    validset = CLM_Dataset(args.valid_data,args.token, os.path.join(args.experiment_dir, f"valid_{args.global_rank}.dat"), args.SFL)
+    validset = CLM_Dataset(args.valid_data,args.token, os.path.join("/work/gd43/a97009/MolKAN/molkan/data/pubchem", "110m_valid.npy"), args.SFL)
+    valid_loader = DataLoader(validset,
+                              shuffle=False,
+                              collate_fn=collate,
+                              batch_size=args.batch_size,
+                              num_workers=args.num_workers,
+                              pin_memory=True)
+    return valid_loader
+
+def prep_valid_encoded_data(args):
+    validset = CLM_Dataset_v2(args.valid_data, args.valid_datanum)
     valid_loader = DataLoader(validset,
                               shuffle=False,
                               collate_fn=collate,
