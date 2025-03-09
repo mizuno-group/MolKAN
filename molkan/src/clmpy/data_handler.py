@@ -20,6 +20,7 @@ import gc
 import pandas as pd
 import torch
 from torch.utils.data import Dataset, Sampler
+from torch.utils.data.distributed import DistributedSampler
 from torch.nn.utils.rnn import pad_sequence
 
 
@@ -69,8 +70,9 @@ class BucketSampler(Sampler):
     def __len__(self):
         return self.length
 
-class DistributedBucketSampler(Sampler):
-    def __init__(self, dataset, buckets, ddp_sampler, shuffle=True, batch_size=512, drop_last=False):
+class DistributedBucketSampler(DistributedSampler):
+    def __init__(self, dataset, buckets, epoch, shuffle=True, batch_size=512, drop_last=False) -> None:
+        super().__init__(dataset, shuffle=True, seed=epoch)
         """
         dataset: 対象のデータセット
         buckets: (min, max, step) のタプル、例: (20, 150, 10)
@@ -79,58 +81,60 @@ class DistributedBucketSampler(Sampler):
         batch_size: バッチサイズ
         drop_last: 最後のバッチが不完全な場合に落とすかどうか
         """
-        self.dataset = dataset
-        self.batch_size = batch_size
+        self.buckets = buckets
         self.shuffle = shuffle
+        self.batch_size = batch_size
         self.drop_last = drop_last
-        self.ddp_sampler = ddp_sampler
 
-        # ddp_sampler によって割り当てられたインデックスを取得
+        # DistributedSamplerの__iter__を呼び出して、シャッフルされたインデックスを取得
         print("loading indices...")
-        self.indices = list(ddp_sampler)
+        indices = list(super().__iter__())
 
-        # 割り当てられたインデックスに対して、シーケンス長を計算
+        # シーケンス長を計算
         print("loadning sequence length...")
-        self.lengths = np.array([(dataset[i][0] != 0).sum() for i in self.indices]).astype(np.int16)
+        lengths = np.array([(dataset[i][0] != 0).sum() for i in indices]).astype(np.int16)
+
+        # バケットの範囲
         bucket_range = np.arange(*buckets)
-        bucket_assignments = torch.bucketize(torch.tensor(self.lengths), torch.tensor(bucket_range), right=False)
+
+        # 各データ点のバケットを計算
+        print("bucketizing...")
+        assert isinstance(self.buckets,tuple)
+        bmin, bmax, bstep = self.buckets
+        assert (bmax - bmin) % bstep == 0
+        buc = torch.bucketize(torch.tensor(lengths),torch.tensor(bucket_range),right=False)
 
         # バケットごとにインデックスをグループ化
-        self.buckets = defaultdict(list)
-        for idx, bucket in zip(self.indices, bucket_assignments):
-            self.buckets[bucket.item()].append(idx)
+        print("grouping...")
+        bucs = defaultdict(list)
+        for i,v in zip(indices, buc): # 実際にdatasetから取ってきたインデックスを反映
+            bucs[v.item()].append(i)
+        # _ = bucs.pop(bucket_max)
 
-        # 必要に応じて、極端に長いシーケンスのバケット（最大値のバケット）を除外
-        bucket_max = int(max(bucket_assignments))
-        if bucket_max in self.buckets:
-            self.buckets.pop(bucket_max)
+        self.buckets = dict()
+        for bucket_size, bucket in bucs.items():
+            if len(bucket) > 0:
+                self.buckets[bucket_size] = torch.tensor(bucket,dtype=torch.int)
+        self.__iter__()
+
+        print("DDPBucketSampler initialize finished.")
 
     def __iter__(self):
         batches = []
         for bucket in self.buckets.values():
-            bucket_tensor = torch.tensor(bucket)
-            if self.shuffle:
-                bucket_tensor = bucket_tensor[torch.randperm(bucket_tensor.nelement())]
-            # バッチサイズごとに分割
-            bucket_batches = torch.split(bucket_tensor, self.batch_size)
-            if self.drop_last and len(bucket_batches) > 1 and len(bucket_batches[-1]) < self.batch_size:
-                bucket_batches = bucket_batches[:-1]
-            batches.extend(bucket_batches)
-        # バッチ単位でもシャッフル
-        if self.shuffle:
+            curr_bucket = torch.split(bucket,self.batch_size)
+            if len(curr_bucket) > 1 and self.drop_last == True:
+                if len(curr_bucket[-1]) < len(curr_bucket[-2]):
+                    curr_bucket = curr_bucket[:-1]
+            batches += curr_bucket
+
+        self.length = len(batches)
+        if self.shuffle == True:
             random.shuffle(batches)
-        # 各バッチはリスト形式で返す
-        for batch in batches:
-            yield batch.tolist()
+        return iter(batches)
 
     def __len__(self):
-        total = 0
-        for bucket in self.buckets.values():
-            n_batches = len(bucket) // self.batch_size
-            if not self.drop_last and len(bucket) % self.batch_size:
-                n_batches += 1
-            total += n_batches
-        return total
+        return self.length
 
 def read_smiles_from_csv(path):
     for chunk in pd.read_csv(path, usecols=["input", "output"], chunksize=100000):
@@ -246,9 +250,8 @@ class CLM_Dataset(Dataset):
         return self.data[idx, 0].copy(), self.data[idx, 1].copy()
 
 class CLM_Dataset_v2(Dataset):
-    def __init__(self, path, datanum):
-        print("---> start loading tokenized arrays...")
-        self.data = np.memmap(path, dtype=np.int16, mode="r", shape=(datanum, 2, 252))
+    def __init__(self, path, datanum, datadim):
+        self.data = np.memmap(path, dtype=np.int16, mode="r", shape=(datanum, 2, datadim))
         self.datanum = datanum
     
     def __len__(self):
