@@ -21,7 +21,7 @@ import torch
 from .data_handler import seq2id
 
 
-def plot_loss(train,valid,train2=[],valid2=[],dir_name="", plot_name=None):
+def plot_loss(train,valid,valid_steps,train2=[],valid2=[],dir_name="",plot_name=None):
     fig = plt.figure(figsize=(12,7))
     ax1 = fig.add_subplot(211)
     loss1 = ax1.plot(train,color="blue",label="train_rec")
@@ -40,7 +40,7 @@ def plot_loss(train,valid,train2=[],valid2=[],dir_name="", plot_name=None):
 
     ax2 = fig.add_subplot(212)
     loss2 = ax2.plot(valid,color="orange",label="valid_rec")
-    ax2.set_xlabel("step")
+    ax2.set_xlabel(f"step * {valid_steps}")
     ax2.set_ylabel("reconstruction loss")
     ax2.grid()
     ax2.spines["right"].set_visible(False)
