@@ -12,16 +12,16 @@ import pandas as pd
 import torch.nn as nn
 import torch.optim as optim
 from schedulefree import RAdamScheduleFree
-from torch.utils.data import DataLoader, DistributedSampler
+from torch.utils.data import Subset, DataLoader, DistributedSampler
 
 from .data_handler import *
 from .utils import EarlyStopping, warmup_schedule
 
 
-def load_train_objs(args,model):
+def load_train_objs(args,model, esmode="min"):
     criteria = nn.CrossEntropyLoss(reduction="sum")
     optimizer = RAdamScheduleFree(model.parameters(),lr=args.max_lr)
-    es = EarlyStopping(patience=args.patience)
+    es = EarlyStopping(mode=esmode, patience=args.patience)
     return criteria, optimizer, es
 
 def worker_init_fn(worker_id):
@@ -35,7 +35,7 @@ def prep_train_data(args):
     buckets = (args.buckets_min, args.buckets_max, args.buckets_step)
     trainset = CLM_Dataset(args.train_data,args.token,os.path.join("/work/gd43/a97009/MolKAN/molkan/data/pubchem", "110m_train.npy"),args.SFL)
     ddpsampler = DistributedSampler(trainset, shuffle=True)
-    train_sampler = DistributedBucketSampler(trainset,buckets,ddpsampler,shuffle=False,batch_size=args.batch_size)
+    train_sampler = DistributedBucketSampler(trainset,buckets,shuffle=False,batch_size=args.batch_size)
     train_loader = DataLoader(trainset,
                               batch_sampler=train_sampler,
                               collate_fn=collate,
@@ -44,21 +44,36 @@ def prep_train_data(args):
                               pin_memory=True)
     return train_loader
 
-def prep_train_encoded_data(args):
-    trainset = CLM_Dataset_v2(args.train_data, args.train_datanum)
-    print("load DDPSampler...")
-    ddpsampler = DistributedSampler(trainset, shuffle=True)
-    # print("load DDPBucketSampler...")
-    # train_sampler = DistributedBucketSampler(trainset,buckets,ddpsampler,shuffle=False,batch_size=args.batch_size)
+def prep_3train_encoded_data(args):
+    trainset1 = CLM_Dataset_v2(args.train_data1, args.train_datanum1, args.train_datadim1)
+    trainset2 = CLM_Dataset_v2(args.train_data2, args.train_datanum2, args.train_datadim2)
+    trainset3 = CLM_Dataset_v2(args.train_data3, args.train_datanum3, args.train_datadim3)
+    ddpsampler1 = DistributedSampler(trainset1, shuffle=True)
+    ddpsampler2 = DistributedSampler(trainset2, shuffle=True)
+    ddpsampler3 = DistributedSampler(trainset3, shuffle=True)
     print("load DataLoader...")
-    train_loader = DataLoader(trainset,
-                              sampler=ddpsampler,
-                              batch_size=args.batch_size,
+    train_loader1 = DataLoader(trainset1,
+                              sampler=ddpsampler1,
                               collate_fn=collate,
+                              batch_size=args.batch_size,
                               num_workers=args.num_workers,
                               worker_init_fn=worker_init_fn,
                               pin_memory=True)
-    return train_loader
+    train_loader2 = DataLoader(trainset2,
+                              sampler=ddpsampler2,
+                              collate_fn=collate,
+                              batch_size=int(args.batch_size/4),
+                              num_workers=args.num_workers,
+                              worker_init_fn=worker_init_fn,
+                              pin_memory=True)
+    train_loader3 = DataLoader(trainset3,
+                              sampler=ddpsampler3,
+                              collate_fn=collate,
+                              batch_size=int(args.batch_size/16),
+                              num_workers=args.num_workers,
+                              worker_init_fn=worker_init_fn,
+                              pin_memory=True)
+    return train_loader1, train_loader2, train_loader3
 
 def prep_valid_data(args):
     validset = CLM_Dataset(args.valid_data,args.token, os.path.join("/work/gd43/a97009/MolKAN/molkan/data/pubchem", "110m_valid.npy"), args.SFL)
@@ -71,14 +86,26 @@ def prep_valid_data(args):
     return valid_loader
 
 def prep_valid_encoded_data(args):
-    validset = CLM_Dataset_v2(args.valid_data, args.valid_datanum)
-    valid_loader = DataLoader(validset,
+    validset = CLM_Dataset_v2(args.valid_data, args.valid_datanum, args.valid_datadim)
+    valid1 = DataLoader(Subset(validset, range(8000)),
                               shuffle=False,
                               collate_fn=collate,
                               batch_size=args.batch_size,
                               num_workers=args.num_workers,
                               pin_memory=True)
-    return valid_loader
+    valid2 = DataLoader(Subset(validset, range(9500)),
+                              shuffle=False,
+                              collate_fn=collate,
+                              batch_size=args.batch_size,
+                              num_workers=args.num_workers,
+                              pin_memory=True)
+    full_loader = DataLoader(validset,
+                              shuffle=False,
+                              collate_fn=collate,
+                              batch_size=args.batch_size,
+                              num_workers=args.num_workers,
+                              pin_memory=True)
+    return valid1, valid2, full_loader
 
 def prep_encode_data(args,smiles):
     dataset = Encoder_Dataset(smiles,args)
