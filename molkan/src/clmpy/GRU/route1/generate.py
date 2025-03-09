@@ -16,9 +16,9 @@ import numpy as np
 import pandas as pd
 import torch
 
-sys.path.append("/workspace/ToxPred/MolKAN/molkan/src")
+sys.path.append("/work/gd43/a97009/MolKAN/molkan/src")
 
-from clmpy.GRU.model import GRU
+from clmpy.GRU.route1.model import GRU
 from clmpy.preprocess import prep_token
 
 def get_args():

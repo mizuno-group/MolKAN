@@ -17,9 +17,9 @@ import numpy as np
 import pandas as pd
 import torch
 
-sys.path.append("/workspace/ToxPred/MolKAN/molkan/src")
+sys.path.append("/work/gd43/a97009/MolKAN/molkan/src")
 
-from clmpy.GRU.model import GRU
+from clmpy.GRU.route2.model import GRU
 from clmpy.preprocess import *
 from clmpy.utils import init_logger
 
@@ -41,13 +41,15 @@ def get_args():
     return args
 
 class Evaluator():
-    def __init__(self,model,args):
+    def __init__(self,model,args,train=False):
         self.args = args
         self.id2sm = args.token.id2sm
-        self.model = model.to(args.device)
         self.maxlen = args.maxlen
-        if len(args.model_path) > 0:
+        if not train and args.model_path:
+            self.model = model.to(args.device)
             self._load(args.model_path)
+        elif train:
+            self.model = model
 
     def _load(self,path):
         self.model.load_state_dict(self.remove_module_prefix(torch.load(path)))
@@ -76,6 +78,7 @@ class Evaluator():
         pred = token_ids[1:,:]
         row = []
         partial_accuracy = 0
+        invalid = 0
         for s,t,v in zip(source.T,target.T,pred.T):
             x = [self.id2sm[j.item()] for j in s]
             y = [self.id2sm[j.item()] for j in t]
@@ -83,7 +86,8 @@ class Evaluator():
             try:
                 ans_toklen = y.index(self.id2sm[2]) - 1
             except:
-                raise ValueError(f"invalid answer token sequence: {y}")
+                invalid += 1
+                continue
             x_str = "".join(x[1:]).split(self.id2sm[2])[0].replace("R","Br").replace("L","Cl")
             y_str = "".join(y[1:]).split(self.id2sm[2])[0].replace("R","Br").replace("L","Cl")
             p_str = "".join(p).split(self.id2sm[2])[0].replace("R","Br").replace("L","Cl")
@@ -95,7 +99,7 @@ class Evaluator():
             par = par / max(len(y_str), len(p_str))
             partial_accuracy += par
             row.append([ans_toklen, judge, x_str,y_str,p_str])
-        return row, partial_accuracy
+        return row, partial_accuracy, invalid
 
     def evaluate(self):
         self.model.eval()
@@ -104,13 +108,25 @@ class Evaluator():
         partial_accuracy = 0
         with torch.no_grad():
             for source, target in test_data:
-                row, par = self._eval_batch(source,target,self.args.device)
+                row, par, invalid = self._eval_batch(source,target,self.args.device)
                 res.extend(row)
                 partial_accuracy += par
         pred_df = pd.DataFrame(res,columns=["ans_tokenlength","judge","input","answer","predict"])
         accuracy = len(pred_df.query("judge == True")) / len(pred_df)
-        partial_accuracy = partial_accuracy / self.args.valid_datanum
+        partial_accuracy = partial_accuracy / (self.args.valid_datanum - invalid)
         return pred_df, accuracy, partial_accuracy
+
+    def evaluate_train(self, valid):
+        self.model.eval()
+        partial_accuracy = 0
+        num_invalid = 0
+        with torch.no_grad():
+            for source, target in valid:
+                _, par, invalid = self._eval_batch(source,target,self.args.device)
+                num_invalid += invalid
+                partial_accuracy += par
+        partial_accuracy = partial_accuracy / (self.args.valid_datanum - num_invalid)
+        return partial_accuracy
 
     def remove_module_prefix(self, state_dict):
         """
@@ -126,12 +142,12 @@ def main():
     args = get_args()
     logger = init_logger(args.experiment_dir, f"maxlr_{args.max_lr}.log")
     model = GRU(args)
-    evaluator = Evaluator(model,args)
+    evaluator = Evaluator(logger, model,args)
     results, accuracy, partial_accuracy = evaluator.evaluate()
+    results = results.sort_values("ans_tokenlength")
     results.to_csv(os.path.join(args.experiment_dir,f"evaluate_result_maxlr_{args.max_lr}.csv"))
     logger.info(f"best model perfect accuracy: {accuracy}")
     logger.info(f"best model partial accuracy: {partial_accuracy}") 
-   
 
 if __name__ == "__main__":
     main()

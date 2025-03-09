@@ -14,15 +14,17 @@ import yaml
 import time
 
 import numpy as np
+import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.distributed import get_rank
 from torch.nn.parallel import DistributedDataParallel as DDP
 
-sys.path.append("/workspace/ToxPred/MolKAN/molkan/src")
+sys.path.append("/work/gd43/a97009/MolKAN/molkan/src")
 
-from clmpy.GRU.model import GRU
+from clmpy.GRU.route1.model import GRU
+from clmpy.GRU.route1.evaluate import Evaluator
 from clmpy.preprocess import *
 from clmpy.utils import plot_loss, init_logger, fix_seed, count_param
 
@@ -57,8 +59,7 @@ class Trainer():
     ):
         self.logger = logger
         self.model = model
-        self.train_path = args.train_data
-        self.valid_data = prep_valid_encoded_data(args)
+        self.valid1, self.valid2, self.valid = prep_valid_encoded_data(args)
         self.criteria = criteria
         self.optimizer = optimizer
         self.es = es
@@ -109,7 +110,7 @@ class Trainer():
             l = self.criteria(out.transpose(-2,-1),target[1:,:]) / source.shape[1]
         return l.item()
     
-    def _train(self,args,train_data):
+    def _train(self,args,train_data, first, second):
         l, l2 = [], []
         min_l2 = float("inf")
         end = False
@@ -117,43 +118,86 @@ class Trainer():
             self.steps_run += 1
             l_t = self._train_batch(*datas,args.device)
             l.append(l_t)
-            if self.steps_run % args.valid_step_range == 0 and args.global_rank == 0:
+            if self.steps_run % args.valid_step_range == 0:
                 l_v = []
-                with torch.no_grad():
-                    for v, w in self.valid_data:
+                if first:
+                    for v, w in self.valid1:
                         l_v.append(self._valid_batch(v,w,args.device))
-                l_v = np.mean(l_v)
-                l2.append(l_v)
-                end = self.es.step(l_v)
-                if len(l) == 1 or l_v < min_l2:
+                    l_v = np.mean(l_v)
+                    l2.append(l_v)
+                elif second:
+                    for v, w in self.valid2:
+                        l_v.append(self._valid_batch(v,w,args.device))
+                    l_v = np.mean(l_v)
+                    l2.append(l_v)
+                else:
+                    for v, w in self.valid:
+                        l_v.append(self._valid_batch(v,w,args.device))
+                    l_v = np.mean(l_v)
+                    l2.append(l_v)
+
+                # 全ノードの検証ロスを集約
+                l_v_tensor = torch.tensor([l_v], dtype=torch.float32, requires_grad=False).to(args.device)
+                gathered_l_v = [torch.zeros_like(l_v_tensor) for _ in range(args.world_size)]
+                torch.distributed.barrier()
+                torch.distributed.all_gather(gathered_l_v, l_v_tensor)
+
+                avg_l_v = torch.stack(gathered_l_v).mean().item()
+                end = self.es.step(avg_l_v)
+
+                if avg_l_v < min_l2:
                     self.best_model = self.model
-                    min_l2 = l_v
-                self._save(self.ckpt_path,self.steps_run)
-                self.logger.info(f"step {self.steps_run} | train_loss: {l_t}, valid_loss: {l_v}")
+                    min_l2 = avg_l_v
+
+                if args.global_rank == 0:
+                    self._save(self.ckpt_path,self.steps_run)
+                    self.logger.info(f"step {self.steps_run} | train_loss: {l_t}, valid_loss: {avg_l_v}")
+                gc.collect()
+                
                 if end:
-                    self.logger.info(f"Early stopping at step {self.steps_run}")
-                    torch.distributed.destroy_process_group()
-                    return l, l2, end
+                    if args.global_rank == 0:
+                            self.logger.info(f"Early stopping at step {self.steps_run}")
+                    torch.distributed.barrier()
+                    break
             if self.steps_run >= args.steps:
                 end = True
-                return l, l2, end
+                if args.global_rank == 0:
+                    self.logger.info(f"Reaching train steps limit: {args.steps}. Train finished.")
+                torch.distributed.barrier()
+                break
         return l, l2, end
     
     def train(self,args):
         end = False
-        l, l2 = [], []
-        train_data = prep_train_encoded_data(args)
+        l, l2= [], []
+        train_data1, train_data2, train_data3 = prep_3train_encoded_data(args)
         if args.global_rank == 0:
             self.logger.info("train start...")
+        first = True
+        second = True
         while end == False:
-            a, b, end = self._train(args,train_data)
+            a, b, end = self._train(args,train_data1, first, second)
             l.extend(a)
             l2.extend(b)
-        if self.steps_run == args.steps and args.global_rank == 0:
-            self.logger.info(">>> reaching train step limit. TRAIN FINISHED.")
-            torch.distributed.destroy_process_group()
+            if end:
+                break
+            if first:
+                self.es.num_bad_steps = 0
+                self.es.best = None
+                first = False
+            a, b, end = self._train(args, train_data2, first, second)
+            l.extend(a)
+            l2.extend(b)
+            if end:
+                break
+            if second:
+                self.es.num_bad_steps = 0
+                self.es.best = None
+                second = False
+            a, b, p, end = self._train(args, train_data3, first, second)
+            l.extend(a)
+            l2.extend(b)
         return l, l2
-    
 
 def main():
     ts = time.perf_counter()
@@ -163,11 +207,10 @@ def main():
     args.global_rank = get_rank()
     if args.global_rank == 0:
         logger = init_logger(args.experiment_dir, filename=f"maxlr_{args.max_lr}.log")
-    seed = args.seed + args.global_rank
-    fix_seed(seed, fix_gpu=False)
+    fix_seed(args.seed, fix_gpu=False)
     model = GRU(args)
-    params, tr_params = count_param(model)
     if args.global_rank == 0:
+        params, tr_params = count_param(model)
         logger.info(f"params: {params}  trainable params: {tr_params}")
     if torch.cuda.is_available():
         model = model.to(args.device)
@@ -187,6 +230,8 @@ def main():
         if args.plot:
             plot_loss(loss_t,loss_v,dir_name=args.experiment_dir, plot_name=f"maxlr_{args.max_lr}")
         logger.info(">>> experiment finished.")
+    torch.distributed.barrier()
+    torch.distributed.destroy_process_group()
 
     tg = time.perf_counter()
     dt = tg - ts
