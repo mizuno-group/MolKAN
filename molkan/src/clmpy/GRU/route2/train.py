@@ -110,9 +110,8 @@ class Trainer():
             l = self.criteria(out.transpose(-2,-1),target[1:,:]) / source.shape[1]
         return l.item()
     
-    # FIXME change [first, second] -> [second, third]
-    def _train(self,args,train_data, first, second):
-        l, l2 = [], []
+    def _train(self,args,train_data,trainfrag):
+        l, l2, par = [], [], []
         min_l2 = float("inf")
         end = False
         for datas in train_data:
@@ -121,21 +120,27 @@ class Trainer():
             l.append(l_t)
             if self.steps_run % args.valid_step_range == 0:
                 l_v = []
-                if first:
+                if trainfrag == 0:
                     for v, w in self.valid1:
                         l_v.append(self._valid_batch(v,w,args.device))
                     l_v = np.mean(l_v)
                     l2.append(l_v)
-                elif second:
+                    p = Evaluator(self.model, args, train=True).evaluate_train(self.valid1)
+                    par.append(p)
+                elif trainfrag == 1:
                     for v, w in self.valid2:
                         l_v.append(self._valid_batch(v,w,args.device))
                     l_v = np.mean(l_v)
                     l2.append(l_v)
-                else:
+                    p = Evaluator(self.model, args, train=True).evaluate_train(self.valid2)
+                    par.append(p)
+                elif trainfrag == 2:
                     for v, w in self.valid:
                         l_v.append(self._valid_batch(v,w,args.device))
                     l_v = np.mean(l_v)
                     l2.append(l_v)
+                    p = Evaluator(self.model, args, train=True).evaluate_train(self.valid)
+                    par.append(p)
 
                 # 全ノードの検証ロスを集約
                 l_v_tensor = torch.tensor([l_v], dtype=torch.float32, requires_grad=False).to(args.device)
@@ -152,7 +157,7 @@ class Trainer():
 
                 if args.global_rank == 0:
                     self._save(self.ckpt_path,self.steps_run)
-                    self.logger.info(f"step {self.steps_run} | train_loss: {l_t}, valid_loss: {avg_l_v}")
+                    self.logger.info(f"step {self.steps_run} | train_loss: {l_t}, valid_loss: {avg_l_v}, valid_partial: {p}")
                 gc.collect()
                 
                 if end:
@@ -166,42 +171,25 @@ class Trainer():
                     self.logger.info(f"Reaching train steps limit: {args.steps}. Train finished.")
                 torch.distributed.barrier()
                 break
-        return l, l2, end
+        return l, l2, par, end
     
-    # FIXME change train order, totally split 3train data (carriculum learning)
     def train(self,args):
         end = False
-        l, l2= [], []
+        l, l2, par = [], [], []
         train_data1, train_data2, train_data3 = prep_3train_encoded_data(args)
         if args.global_rank == 0:
             self.logger.info("train start...")
-        first = True
-        second = True
-        while end == False:
-            a, b, end = self._train(args,train_data1, first, second)
-            l.extend(a)
-            l2.extend(b)
-            if end:
-                break
-            if first:
-                self.es.num_bad_steps = 0
-                self.es.best = None
-                first = False
-            a, b, end = self._train(args, train_data2, first, second)
-            l.extend(a)
-            l2.extend(b)
-            if end:
-                break
-            if second:
-                self.es.num_bad_steps = 0
-                self.es.best = None
-                second = False
-            a, b, p, end = self._train(args, train_data3, first, second)
-            l.extend(a)
-            l2.extend(b)
-        return l, l2
+        for train_data, trainfrag in zip([train_data1, train_data2, train_data3], range(3)):
+            while end == False:
+                a, b, p, end = self._train(args,train_data, trainfrag)
+                l.extend(a)
+                l2.extend(b)
+                par.extend(p)
+            if args.global_rank == 0:
+                self.logger.info(f">>> train fragment {trainfrag+1} finished.")
+            end = False
+        return l, l2, par
 
-# TODO include evaluation
 def main():
     ts = time.perf_counter()
 
@@ -225,13 +213,25 @@ def main():
         trainer = Trainer(args, model,criteria,optimizer, es, logger)
     else:
         trainer = Trainer(args, model,criteria,optimizer, es)
-    loss_t, loss_v = trainer.train(args)
+    loss_t, loss_v, par = trainer.train(args)
     if args.global_rank == 0:
         logger.info("saving results...")
         torch.save(trainer.best_model.state_dict(),os.path.join(args.experiment_dir,f"best_model_maxlr_{args.max_lr}.pt"))
         os.remove(trainer.ckpt_path)
         if args.plot:
-            plot_loss(loss_t,loss_v,dir_name=args.experiment_dir, plot_name=f"maxlr_{args.max_lr}")
+            plot_loss(loss_t,loss_v,args.valid_step_range, dir_name=args.experiment_dir, plot_name=f"maxlr_{args.max_lr}")
+            plt.plot(par)
+            plt.xlabel(f"step * {args.valid_step_range}")
+            plt.ylabel("partial accuracy")
+            plt.savefig(os.path.join(args.experiment_dir,f"maxlr_{args.max_lr}_partial_accuracy.png"), bbox_inches="tight")
+            plt.close()
+        args.model_path = os.path.join(args.experiment_dir,f"best_model_maxlr_{args.max_lr}.pt")
+        model = GRU(args)
+        results, accuracy, partial_accuracy = Evaluator(model, args).evaluate()
+        results = results.sort_values("ans_tokenlength")
+        results.to_csv(os.path.join(args.experiment_dir,f"evaluate_result_maxlr_{args.max_lr}.csv"))
+        logger.info(f"best model perfect accuracy: {accuracy}")
+        logger.info(f"best model partial accuracy: {partial_accuracy}") 
         logger.info(">>> experiment finished.")
     torch.distributed.barrier()
     torch.distributed.destroy_process_group()
