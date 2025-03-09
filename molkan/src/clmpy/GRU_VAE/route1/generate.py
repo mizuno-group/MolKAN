@@ -18,7 +18,7 @@ import torch
 
 sys.path.append("/work/gd43/a97009/MolKAN/molkan/src")
 
-from clmpy.GRU_VAE.model import GRUVAE
+from clmpy.GRU_VAE.route1.model import GRUVAE
 from clmpy.preprocess import prep_token
 
 

@@ -11,6 +11,7 @@ import os
 import sys
 from argparse import ArgumentParser, FileType
 import yaml
+from collections import OrderedDict
 
 import numpy as np
 import pandas as pd
@@ -18,7 +19,7 @@ import torch
 
 sys.path.append("/work/gd43/a97009/MolKAN/molkan/src")
 
-from clmpy.GRU_VAE.model import GRUVAE
+from clmpy.GRU_VAE.route1.model import GRUVAE
 from clmpy.preprocess import *
 from clmpy.utils import init_logger
 
@@ -40,16 +41,18 @@ def get_args():
     return args
 
 class Evaluator():
-    def __init__(self,model,args):
+    def __init__(self,model,args,train=False):
         self.args = args
         self.id2sm = args.token.id2sm
-        self.model = model.to(args.device)
         self.maxlen = args.maxlen
-        if args.model_path:
+        if not train and args.model_path:
+            self.model = model.to(args.device)
             self._load(args.model_path)
+        elif train:
+            self.model = model
 
     def _load(self,path):
-        self.model.load_state_dict(torch.load(path))
+        self.model.load_state_dict(self.remove_module_prefix(torch.load(path)))
 
     def _eval_batch(self,source,target,device):
         source = source.to(device)
@@ -74,36 +77,77 @@ class Evaluator():
             token_ids[i,:] = new_id
         pred = token_ids[1:,:]
         row = []
+        invalid = 0
+        partial_accuracy = 0
         for s,t,v in zip(source.T,target.T,pred.T):
             x = [self.id2sm[j.item()] for j in s]
             y = [self.id2sm[j.item()] for j in t]
             p = [self.id2sm[j.item()] for j in v]
+            try:
+                ans_toklen = y.index(self.id2sm[2]) - 1
+            except:
+                invalid += 1
+                continue
             x_str = "".join(x[1:]).split(self.id2sm[2])[0].replace("R","Br").replace("L","Cl")
             y_str = "".join(y[1:]).split(self.id2sm[2])[0].replace("R","Br").replace("L","Cl")
             p_str = "".join(p).split(self.id2sm[2])[0].replace("R","Br").replace("L","Cl")
             judge = True if y_str == p_str else False
-            row.append([x_str,y_str,p_str,judge])
-        return row
+            par = 0
+            for i in range(min(len(y_str), len(p_str))):
+                if y_str[i] == p_str[i]:
+                    par += 1
+            par = par / max(len(y_str), len(p_str))
+            partial_accuracy += par
+            row.append([ans_toklen, judge, x_str,y_str,p_str])
+        return row, partial_accuracy, invalid
 
     def evaluate(self):
         self.model.eval()
         res = []
         test_data = prep_valid_encoded_data(self.args)
+        partial_accuracy = 0
         with torch.no_grad():
             for source, target in test_data:
-                res.extend(self._eval_batch(source,target,self.args.device))
-        pred_df = pd.DataFrame(res,columns=["input","answer","predict","judge"])
+                row, par, invalid = self._eval_batch(source,target,self.args.device)
+                res.extend(row)
+                partial_accuracy += par
+        pred_df = pd.DataFrame(res,columns=["ans_tokenlength","judge","input","answer","predict"])
         accuracy = len(pred_df.query("judge == True")) / len(pred_df)
-        return pred_df, accuracy
+        partial_accuracy = partial_accuracy / (self.args.valid_datanum - invalid)
+        return pred_df, accuracy, partial_accuracy
+
+    def evaluate_train(self, valid):
+        self.model.eval()
+        partial_accuracy = 0
+        num_invalid = 0
+        with torch.no_grad():
+            for source, target in valid:
+                _, par, invalid = self._eval_batch(source,target,self.args.device)
+                num_invalid += invalid
+                partial_accuracy += par
+        partial_accuracy = partial_accuracy / (self.args.valid_datanum - num_invalid)
+        return partial_accuracy
     
+    def remove_module_prefix(self, state_dict):
+        """
+        state_dictのキーから'module.'プレフィックスを取り除く関数
+        """
+        new_state_dict = OrderedDict()
+        for k, v in state_dict.items():
+            name = k[7:] if k.startswith('module.') else k  # module.を取り除く
+            new_state_dict[name] = v
+        return new_state_dict
+
 def main():
     args = get_args()
     logger = init_logger(args.experiment_dir, f"maxlr_{args.max_lr}.log")
     model = GRUVAE(args)
     evaluator = Evaluator(model,args)
-    results, accuracy = evaluator.evaluate()
+    results, accuracy, partial_accuracy = evaluator.evaluate()
+    results = results.sort_values("ans_tokenlength")
     results.to_csv(os.path.join(args.experiment_dir,f"evaluate_result_maxlr_{args.max_lr}.csv"))
-    logger.info("perfect accuracy: {}".format(accuracy)) 
+    logger.info(f"best model perfect accuracy: {accuracy}")
+    logger.info(f"best model partial accuracy: {partial_accuracy}")
    
 
 if __name__ == "__main__":
