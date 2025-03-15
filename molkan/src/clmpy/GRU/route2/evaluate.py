@@ -54,18 +54,27 @@ class Evaluator():
     def _load(self,path):
         self.model.load_state_dict(self.remove_module_prefix(torch.load(path)))
 
-    def _eval_batch(self,source,target,device):
+    def _eval_batch(self,source,target,device,train=False):
         source = source.to(device)
-        latent = self.model.encoder(source,inference=True)
+        if not train:
+            latent = self.model.encoder(source,inference=True)
+        else:
+            latent = self.model.module.encoder(source,inference=True)
         token_ids = np.zeros((self.maxlen,source.size(1)))
         token_ids[0,:] = 1
         token_ids = torch.tensor(token_ids,dtype=torch.long).to(device)
         for i in range(1,self.maxlen):
             token_ids_seq = token_ids[i-1,:].unsqueeze(0)
             if i == 1:
-                output, latent = self.model.decoder(token_ids_seq,latent)
+                if not train:
+                    output, latent = self.model.decoder(token_ids_seq,latent)
+                else:
+                    output, latent = self.model.module.decoder(token_ids_seq,latent)
             else:
-                output, latent = self.model.decoder.gru2out(token_ids_seq,latent)
+                if not train:
+                    output, latent = self.model.decoder.gru2out(token_ids_seq,latent)
+                else:
+                    output, latent = self.model.module.decoder.gru2out(token_ids_seq,latent)
             _, new_id = output.max(dim=2)
             is_end_token = token_ids_seq == 2
             is_pad_token = token_ids_seq == 0
@@ -104,7 +113,7 @@ class Evaluator():
     def evaluate(self):
         self.model.eval()
         res = []
-        test_data = prep_valid_encoded_data(self.args)
+        t1, t2 , test_data = prep_valid_encoded_data(self.args)
         partial_accuracy = 0
         with torch.no_grad():
             for source, target in test_data:
@@ -122,7 +131,7 @@ class Evaluator():
         num_invalid = 0
         with torch.no_grad():
             for source, target in valid:
-                _, par, invalid = self._eval_batch(source,target,self.args.device)
+                _, par, invalid = self._eval_batch(source,target,self.args.device, train=True)
                 num_invalid += invalid
                 partial_accuracy += par
         partial_accuracy = partial_accuracy / (self.args.valid_datanum - num_invalid)

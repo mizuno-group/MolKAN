@@ -62,14 +62,14 @@ def prep_3train_encoded_data(args):
     train_loader2 = DataLoader(trainset2,
                               sampler=ddpsampler2,
                               collate_fn=collate,
-                              batch_size=int(args.batch_size/4),
+                              batch_size=args.batch_size,
                               num_workers=args.num_workers,
                               worker_init_fn=worker_init_fn,
                               pin_memory=True)
     train_loader3 = DataLoader(trainset3,
                               sampler=ddpsampler3,
                               collate_fn=collate,
-                              batch_size=int(args.batch_size/16),
+                              batch_size=args.batch_size,
                               num_workers=args.num_workers,
                               worker_init_fn=worker_init_fn,
                               pin_memory=True)
@@ -106,6 +106,34 @@ def prep_valid_encoded_data(args):
                               num_workers=args.num_workers,
                               pin_memory=True)
     return valid1, valid2, full_loader
+
+def prep_valid_encoded_data_v2(args):
+    validset = CLM_Dataset_v2(args.valid_data, args.valid_datanum, args.valid_datadim)
+    valid1 = DataLoader(Subset(validset, range(8000)),
+                              shuffle=False,
+                              collate_fn=collate,
+                              batch_size=args.batch_size,
+                              num_workers=args.num_workers,
+                              pin_memory=True)
+    valid2 = DataLoader(Subset(validset, range(8000, 9500)),
+                              shuffle=False,
+                              collate_fn=collate,
+                              batch_size=args.batch_size,
+                              num_workers=args.num_workers,
+                              pin_memory=True)
+    valid3 = DataLoader(Subset(validset, range(9500, 10000)),
+                              shuffle=False,
+                              collate_fn=collate,
+                              batch_size=args.batch_size,
+                              num_workers=args.num_workers,
+                              pin_memory=True)
+    full = DataLoader(validset,
+                      shuffle=False,
+                      collate_fn=collate,
+                      batch_size=args.batch_size,
+                      num_workers=args.num_workers,
+                      pin_memory=True)
+    return valid1, valid2, valid3, full
 
 def prep_encode_data(args,smiles):
     dataset = Encoder_Dataset(smiles,args)

@@ -116,7 +116,7 @@ class Trainer():
             self.steps_run += 1
             l_t = self._train_batch(*datas,args.device)
             l.append(l_t)
-            if self.steps_run % args.valid_step_range == 0 and args.global_rank == 0:
+            if self.steps_run % args.valid_step_range == 0:
                 l_v = []
                 for v, w in self.valid_data:
                     l_v.append(self._valid_batch(v,w,args.device))
@@ -126,49 +126,57 @@ class Trainer():
                 if len(l) == 1 or l_v < min_l2:
                     self.best_model = self.model
                     min_l2 = l_v
-                self._save(self.ckpt_path,self.steps_run)
-                self.logger.info(f"step {self.steps_run} | train_loss: {l_t}, valid_loss: {l_v}")
+                if args.global_rank == 0:
+                    self._save(self.ckpt_path,self.steps_run)
+                    self.logger.info(f"step {self.steps_run} | train_loss: {l_t}, valid_loss: {l_v}")
+                
                 if end:
-                    self.logger.info(f"Early stopping at step {self.steps_run}")
+                    if args.global_rank == 0:
+                            self.logger.info(f"Early stopping at step {self.steps_run}")
+                    torch.distributed.barrier()
                     torch.distributed.destroy_process_group()
-                    return l, l2, end
+                    break
             if self.steps_run >= args.steps:
-                end = True
-                return l, l2, end
+                if args.global_rank == 0:
+                    self.logger.info(f"Reaching train steps limit: {args.steps}. Train finished.")
+                torch.distributed.barrier()
+                torch.distributed.destroy_process_group()
+                break
         return l, l2, end
     
     def train(self,args):
         end = False
         l, l2 = [], []
-        train_data = prep_train_encoded_data(args)
         if args.global_rank == 0:
             self.logger.info("train start...")
+        epoch = 0
         while end == False:
+            epoch += 1
+            train_data = prep_train_encoded_data(args, epoch=epoch)
             a, b, end = self._train(args,train_data)
             l.extend(a)
             l2.extend(b)
-        if self.steps_run == args.steps and args.global_rank == 0:
-            self.logger.info(">>> reaching train step limit. TRAIN FINISHED.")
-            torch.distributed.destroy_process_group()
         return l, l2
     
 def main():
     ts = time.perf_counter()
 
     args = get_args()
+    print("init process group...")
     torch.distributed.init_process_group(backend="nccl")
     args.global_rank = get_rank()
     if args.global_rank == 0:
         logger = init_logger(args.experiment_dir, filename=f"maxlr_{args.max_lr}.log")
-    seed = args.seed + args.global_rank
-    fix_seed(seed, fix_gpu=False)
+    fix_seed(args.seed, fix_gpu=False)
     model = TransformerLatent(args)
-    params, tr_params = count_param(model)
     if args.global_rank == 0:
+        params, tr_params = count_param(model)
         logger.info(f"params: {params}  trainable params: {tr_params}")
     if torch.cuda.is_available():
         model = model.to(args.device)
+        print("set DDP model...")
         model = DDP(module=model, device_ids=[args.local_rank], find_unused_parameters=True)
+        print("DDP model setting finished")
     else:
         raise ValueError("Can't use CUDA !!! Check your environment !!!")
     criteria, optimizer, es = load_train_objs(args,model)
