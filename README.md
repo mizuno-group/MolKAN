@@ -16,6 +16,9 @@ Please contact tadahaya[at]gmail.com before publishing your paper using the cont
 - used datasets
     - [MoleculeNet](https://doi.org/10.48550/arXiv.1703.00564)
     - [Therapeutics Data Commons](https://doi.org/10.48550/arXiv.2102.09548)
+- used models
+    - [TransformerVAE](https://doi.org/10.48550/arXiv.2402.11950) ([GitHub](https://github.com/mizuno-group/TransformerVAE))
+    - [UniMol](https://openreview.net/forum?id=6K2RM6wVqKu) ([GitHub](https://github.com/deepmodeling/Uni-Mol))
 - inspired by
     - [KAN: Kolmogorov-Arnold Networks](https://doi.org/10.48550/arXiv.1703.00564) ([GitHub](https://github.com/KindXiaoming/pykan))
     - [FourierKAN](https://github.com/GistNoesis/FourierKAN)

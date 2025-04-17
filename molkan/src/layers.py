@@ -12,13 +12,13 @@ from kan import KAN
 from fastkan import FastKAN
 
 
-class KAN_predictor(nn.Module):
+class KAN_Layer(nn.Module):
     def __init__(self, width:list, mode, grid=20, k=3):
         super().__init__()
         self.width = width
         self.mode = mode
         layers = [KAN(width=self.width, grid=grid, k=k, auto_save=False)]
-        if self.mode == "classification":
+        if self.mode == "c":
             layers.append(nn.Sigmoid())
         self.kan = nn.ModuleList(layers)
 
@@ -27,13 +27,13 @@ class KAN_predictor(nn.Module):
             x = layer(x)
         return x
 
-class FastKAN_predictor(nn.Module):
+class FastKAN_Layer(nn.Module):
     def __init__(self, width:list, mode, grid_min, grid_max, num_grids):
         super().__init__()
         self.width = width
         self.mode = mode
         layers = [FastKAN(width, grid_min=grid_min, grid_max=grid_max, num_grids=num_grids)]
-        if self.mode == "classification":
+        if self.mode == "c":
             layers.append(nn.Sigmoid())
         self.kan = nn.ModuleList(layers)
     
@@ -43,9 +43,9 @@ class FastKAN_predictor(nn.Module):
         return x
 
 # develop based on https://github.com/GistNoesis/FourierKAN.git
-class NaiveFourierKANLayer(th.nn.Module):
+class _NaiveFourierKANLayer(th.nn.Module):
     def __init__( self, inputdim, outdim, gridsize, addbias=True, smooth_initialization=False):
-        super(NaiveFourierKANLayer,self).__init__()
+        super(_NaiveFourierKANLayer,self).__init__()
         self.gridsize= gridsize
         self.addbias = addbias
         self.inputdim = inputdim
@@ -55,13 +55,13 @@ class NaiveFourierKANLayer(th.nn.Module):
         # This makes KAN's scalar functions smooth at initialization.
         # Without smooth_initialization, high gridsizes will lead to high-frequency scalar functions,
         # with high derivatives and low correlation between similar inputs.
-        grid_norm_factor = (th.arange(gridsize) + 1)**2 if smooth_initialization else np.sqrt(gridsize)
+        self.grid_norm_factor = (th.arange(gridsize) + 1)**2 if smooth_initialization else np.sqrt(gridsize)
         
         #The normalization has been chosen so that if given inputs where each coordinate is of unit variance,
         #then each coordinates of the output is of unit variance 
         #independently of the various sizes
         self.fouriercoeffs = th.nn.Parameter( th.randn(2,outdim,inputdim,gridsize) / 
-                                                (np.sqrt(inputdim) * grid_norm_factor ) )
+                                                (np.sqrt(inputdim) * self.grid_norm_factor ) )
         if( self.addbias ):
             self.bias  = th.nn.Parameter( th.zeros(1,outdim))
 
@@ -99,41 +99,47 @@ class NaiveFourierKANLayer(th.nn.Module):
         y = th.reshape( y, outshape)
         return y
 
-class FourierKAN_Predictor(nn.Module):
-    def __init__(self, width:list, mode, num_grids, dropout=0, smooth_initialization=False):
+class FourierKAN_Layer(nn.Module):
+    def __init__(self, width:list, num_grids, dropout=0, smooth_initialization=False):
         super().__init__()
         self.width = width
         self.num_grids = num_grids
-        self.mode = mode
         num_layers = len(self.width) - 1
-        layers = [NaiveFourierKANLayer(inputdim, outdim, self.num_grids, addbias=True, smooth_initialization=smooth_initialization)
+        layers = [_NaiveFourierKANLayer(inputdim, outdim, self.num_grids, addbias=True, smooth_initialization=smooth_initialization)
                                                 for inputdim, outdim in zip(width[:-1], width[1:])]
         for i in range(num_layers-1):
             layers.insert(i*2+1, nn.Dropout(dropout))
-        if self.mode == "classification":
-            layers.append(nn.Sigmoid())
         self.kan = nn.ModuleList(layers)
     
+    def reset_parameters(self):
+        for layer in self.kan:
+            if isinstance(layer, _NaiveFourierKANLayer):
+                layer.fouriercoeffs = th.nn.Parameter( th.randn(2,layer.outdim,layer.inputdim,layer.gridsize) / (np.sqrt(layer.inputdim) * layer.grid_norm_factor ) )
+                if( layer.addbias ):
+                    layer.bias  = th.nn.Parameter( th.zeros(1,layer.outdim))
+
     def forward(self, x):
         for layer in self.kan:
             x = layer(x)
         return x
 
 
-class MLP_predictor(nn.Module):
-    def __init__(self, width:list, mode, dropout=0):
+class MLP_Layer(nn.Module):
+    def __init__(self, width:list, dropout=0):
         super().__init__()
         self.width = width
-        self.mode = mode
         num_layers = len(self.width) - 1
         layers = [nn.Linear(self.width[i], self.width[i+1]) for i in range(num_layers)]
         for i in range(num_layers-1):
             layers.insert(i*2+1, nn.SiLU())
         for i in range(num_layers-1):
             layers.insert(i*3+2, nn.Dropout(dropout))
-        if self.mode == "classification":
-            layers.append(nn.Sigmoid())
         self.mlp = nn.ModuleList(layers)
+    
+    def reset_parameters(self):
+        for layer in self.mlp:
+            if isinstance(layer, nn.Linear):
+                layer.reset_parameters()
     
     def forward(self, x):
         for layer in self.mlp:
