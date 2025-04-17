@@ -18,7 +18,7 @@ from sklearn.metrics import roc_auc_score, r2_score, root_mean_squared_error, me
 
 
 # Initializing Logger
-def init_logger(outdir, level_console="info", level_file="debug"):
+def init_logger(outdir, filename="log.txt", level_console="info", level_file="debug"):
     
     level_dic = {
         "critical": logging.CRITICAL,
@@ -38,7 +38,7 @@ def init_logger(outdir, level_console="info", level_file="debug"):
         datefmt = "%Y%m%d-%H%M%S"
     )
 
-    fh = logging.FileHandler(filename=Path(outdir, "log.txt"))
+    fh = logging.FileHandler(filename=Path(outdir, filename))
     fh.setLevel(level_dic[level_file])
     fh.setFormatter(fmt)
 
@@ -121,10 +121,25 @@ def fix_seed(seed:int=42, fix_gpu:bool=False):
         torch.backends.cudnn.benchmark = False
         torch.backends.cudnn.deterministic = True
 
+# Count parameters num
+def count_param(model):
+    def format_params(num):
+        if num >= 1e9:
+            return f"{num / 1e9:.3f}B"
+        elif num >= 1e6:
+            return f"{num / 1e6:.3f}M"
+        elif num >= 1e3:
+            return f"{num / 1e3:.3f}K"
+        else:
+            return str(num)
+    total_params = format_params(sum(p.numel() for p in model.parameters()))
+    trainable_params = format_params(sum(p.numel() for p in model.parameters() if p.requires_grad))
+    return total_params, trainable_params
+
 # Save and load experiments
 def save_experiment(
-        outdir, config, model, train_losses, valid_losses,
-        valid_metrics, test_scores, classes, note=None, save_model=False
+        outdir, config, model, train_losses, train_briers, valid_losses, valid_briers, 
+        test_scores, classes=None, note=None, save_model=False, save_config=False
         ):
     """
     save the experiment: config, model, metrics, and progress plot
@@ -135,27 +150,28 @@ def save_experiment(
         model (nn.Module): model to be saved
         train_losses (list): training losses
         valid_losses (list): valid losses
-        valid_metrics (dict): valid_metrics
         test_scores (dict): test_scores
         classes (dict): dictionary of class names
         note (str): short note for this running if any
     
     """
     # save config
-    configfile = os.path.join(outdir, 'config.json')
-    with open(configfile, 'w') as f:
-        json.dump(config, f, sort_keys=True, indent=4)
+    if save_config:
+        configfile = os.path.join(outdir, f'config_{note}.json')
+        with open(configfile, 'w') as f:
+            json.dump(config, f, sort_keys=False, indent=4)
     # save metrics
-    jsonfile = os.path.join(outdir, 'loss_metrics.json')
+    jsonfile = os.path.join(outdir, f'loss_scores_{note}.json')
     with open(jsonfile, 'w') as f:
         data = {
             'train_losses': train_losses,
+            'train_briers': train_briers,
             'valid_losses': valid_losses,
-            'valid_metrics': valid_metrics,
+            'valid_briers': valid_briers,
             'test_scores': test_scores,
             'classes': classes,
         }
-        json.dump(data, f, sort_keys=True, indent=4)
+        json.dump(data, f, sort_keys=False, indent=4)
     # save the model
     if save_model:
         save_checkpoint(model, outdir, note=note)
@@ -175,9 +191,9 @@ def save_checkpoint(model, outdir, note):
     model_dir = os.path.join(outdir, 'models')
     os.makedirs(model_dir, exist_ok=True)
     if note is None:
-        cpfile = os.path.join(model_dir, f"models_best.pt")
+        cpfile = os.path.join(model_dir, f"models.pt")
     else:
-        cpfile = os.path.join(model_dir, f"model_best_{note}.pt")
+        cpfile = os.path.join(model_dir, f"{note}.pt")
     torch.save(model.state_dict(), cpfile)
 
 
@@ -237,14 +253,14 @@ def plot_experiments_results(
 
 
 # Timer related functions
-def timer(start_time):
+def timer(start_time, logger):
     """ Measure the elapsed time """
     elapsed_time = time.time() - start_time
     elapsed_hours = int(elapsed_time // 3600)  # hour
     elapsed_minutes = int((elapsed_time % 3600) // 60)  # min
     elapsed_seconds = int(elapsed_time % 60)  # sec
     res = f"{elapsed_hours:02}:{elapsed_minutes:02}:{elapsed_seconds:02}"
-    print(f"Elapsed Time: {res}")
+    logger.info(f"elapsed time: {res}")
     return res
 
 
@@ -264,13 +280,22 @@ def get_component_list(model, optimizer, loss_func, device, scheduler=None):
 
 
 # Loss
+class BCEWithLogitsLoss():
+    def __call__(self, y_pred, y_true, weight):
+        return torch.nn.functional.binary_cross_entropy_with_logits(y_pred, y_true, weight)
+
 class BCELoss():
     def __call__(self, y_pred, y_true, weight):
         return torch.nn.functional.binary_cross_entropy(y_pred, y_true, weight)
 
 class MSE():
+    def __init__(self, brier:bool=False):
+        self.brier = brier
     def __call__(self, y_pred, y_true, weight):
-        return torch.sum(((y_pred- y_true) ** 2) * weight) / torch.sum(weight)
+        if self.brier:
+            return torch.sum(((y_pred - y_true) ** 2) * weight)
+        else:
+            return torch.sum(((y_pred- y_true) ** 2) * weight) / torch.sum(weight)
     
 
 # Metrics functions
@@ -287,7 +312,7 @@ class Metrics:
             except:
                 auroc = np.nan
             auroc_list.append(auroc)
-        return np.nanmean(auroc_list)
+        return float(np.nanmean(auroc_list))
     
     @staticmethod
     def get_confusion_matrix(pred, y):
@@ -357,15 +382,15 @@ class Metrics:
 
     @staticmethod
     def R2(pred, y):
-        return r2_score(y, pred)
+        return float(r2_score(y, pred))
     
     @staticmethod
     def RMSE(pred, y):
-        return root_mean_squared_error(y, pred)
+        return float(root_mean_squared_error(y, pred))
     
     @staticmethod
     def MAE(pred, y):
-        return mean_absolute_error(y, pred)
+        return float(mean_absolute_error(y, pred))
 
 
 # for argparse input

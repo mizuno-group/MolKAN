@@ -18,16 +18,16 @@ sys.path.append(project_path)
 
 # original packages in src
 from src import utils
-from src import data_handler as dh
-from src.tuning import KAN_Tuner, MLP_Tuner
+from src.KAN_vs_MLP import data_handler as dh
+from src.KAN_vs_MLP.tuning import KAN_Tuner, MLP_Tuner
 """ === change based on the model you want to use === """
-from src.models import *
+from src.layers import *
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--datasets", type=str, help="datasets name you want to use")
 parser.add_argument("--label_columns", type=utils.parse_str_list, help="label columns names")
 parser.add_argument("--model", type=str, help="Use KAN or MLP")
-parser.add_argument("--mode", type=str, default="classification", help="classification or regression")
+parser.add_argument("--mode", type=str, default="c", help="c(lassification) or r(egression)")
 
 args = parser.parse_args()
 
@@ -64,12 +64,12 @@ cfg["label_columns"] = merged
 if __name__ == "__main__":
 
     data_name = dataset_dict[cfg["datasets"]]
-    if cfg["mode"] == "classification":
+    if cfg["mode"] == "c":
         metrics = ["accuracy", "AUROC", "sensitivity", "precision", "MCC"]
-    elif cfg["mode"] == "regression":
+    elif cfg["mode"] == "r":
         metrics = ["R2", "RMSE", "MAE"]
     else:
-        raise NameError("check mode argument. classification or regression ?")
+        raise NameError("check mode argument. c(lassification) or r(egression) ?")
 
     results = pd.DataFrame(columns=metrics)
 
@@ -97,7 +97,7 @@ if __name__ == "__main__":
             num_labels = len(cfg["label_columns"])
             dset = dh.prep_dataset(x, y)
             transform = dh.array_to_tensors_flaot()
-            if len(cfg["label_columns"]) == 1 and cfg["mode"] == "classification":
+            if len(cfg["label_columns"]) == 1 and cfg["mode"] == "c":
                 train_set, valid_set, test_set = dh.split_dataset_stratified(dset, [0.8, 0.1, 0.1], shuffle=True, transform=transform)
             else:
                 train_set, valid_set, test_set = dh.split_dataset(dset, [0.8, 0.1, 0.1], shuffle=True, transform=transform)

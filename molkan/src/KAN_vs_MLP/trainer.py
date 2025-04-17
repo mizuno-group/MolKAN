@@ -9,7 +9,8 @@ import numpy as np
 import pandas as pd
 import torch
 from tqdm import tqdm
-from src.utils import save_checkpoint, Metrics
+
+from ..utils import save_checkpoint, Metrics
 
 
 class Trainer:
