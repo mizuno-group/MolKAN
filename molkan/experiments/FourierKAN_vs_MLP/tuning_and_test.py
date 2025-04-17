@@ -18,8 +18,8 @@ sys.path.append(project_path)
 
 # original packages in src
 from src import utils
-from src import data_handler as dh
-from src.tuning import KAN_Tuner, MLP_Tuner
+from src.KAN_vs_MLP import data_handler as dh
+from src.KAN_vs_MLP.tuning import KAN_Tuner, MLP_Tuner
 """ === change based on the model you want to use === """
 from src.layers import *
 
